@@ -323,8 +323,9 @@
     <h3>🔗 ซิงก์กับ Google Sheet</h3>
     <p style="font-size:0.82rem;">วางลิงก์ Web App ที่ deploy จาก Google Apps Script เพื่อให้ข้อมูลซิงก์ทุกเครื่อง (ดูวิธีตั้งค่าที่แชท)</p>
     <input type="text" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%;margin:8px 0;">
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="add-btn" onclick="saveSyncUrl()">บันทึก</button>
+      <button class="add-btn" style="background:var(--today);" onclick="manualSync()">🔄 ซิงก์เดี๋ยวนี้</button>
       <button class="add-btn" style="background:var(--urgent);" onclick="clearSyncUrl()">ยกเลิก</button>
     </div>
     <div class="ref" id="syncStatus" style="margin-top:10px;"></div>
@@ -689,22 +690,46 @@ document.getElementById('modalBg').addEventListener('click', e=>{
 
 /* ---------- Google Sheet sync ---------- */
 const LS_SYNC = 'jd_sync_url';
+const LS_SYNC_LAST = 'jd_sync_last';
+const LS_SYNC_ERR = 'jd_sync_err';
 function getSyncUrl(){ return localStorage.getItem(LS_SYNC) || ''; }
+
+function updateSyncStatusDisplay(){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  const url = getSyncUrl();
+  if(!url){ el.textContent = 'ยังไม่ได้เชื่อมต่อ'; return; }
+  const err = localStorage.getItem(LS_SYNC_ERR);
+  const last = localStorage.getItem(LS_SYNC_LAST);
+  if(err){ el.textContent = '⚠️ ผิดพลาด: ' + err; return; }
+  if(last){ el.textContent = '✅ ซิงก์ล่าสุด ' + new Date(last).toLocaleTimeString('th-TH'); return; }
+  el.textContent = 'เชื่อมต่อแล้ว กำลังรอซิงก์ครั้งแรก...';
+}
+
 function openSyncSettings(){
   document.getElementById('syncUrlInput').value = getSyncUrl();
-  document.getElementById('syncStatus').textContent = getSyncUrl() ? '✅ เชื่อมต่ออยู่' : 'ยังไม่ได้เชื่อมต่อ';
+  updateSyncStatusDisplay();
   document.getElementById('syncModalBg').classList.add('show');
 }
 function closeSyncModal(){ document.getElementById('syncModalBg').classList.remove('show'); }
 function saveSyncUrl(){
   const url = document.getElementById('syncUrlInput').value.trim();
   localStorage.setItem(LS_SYNC, url);
-  closeSyncModal();
-  if(url) syncPull();
+  localStorage.removeItem(LS_SYNC_ERR);
+  if(url) manualSync();
+  else updateSyncStatusDisplay();
 }
 function clearSyncUrl(){
   localStorage.removeItem(LS_SYNC);
+  localStorage.removeItem(LS_SYNC_ERR);
+  localStorage.removeItem(LS_SYNC_LAST);
   closeSyncModal();
+}
+function manualSync(){
+  updateSyncStatusDisplay();
+  const el = document.getElementById('syncStatus');
+  if(el) el.textContent = 'กำลังซิงก์...';
+  doPush().then(()=> syncPull());
 }
 document.getElementById('syncModalBg').addEventListener('click', e=>{
   if(e.target.id==='syncModalBg') closeSyncModal();
@@ -715,24 +740,47 @@ function syncPush(){
   const url = getSyncUrl();
   if(!url) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(()=>{
-    fetch(url, {
+  syncTimer = setTimeout(doPush, 900);
+}
+async function doPush(){
+  const url = getSyncUrl();
+  if(!url) return;
+  try{
+    const res = await fetch(url, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({tasks: loadTasks(), routines: loadRoutines()})
-    }).catch(()=>{});
-  }, 900);
+    });
+    const text = await res.text();
+    let parsed = null;
+    try{ parsed = JSON.parse(text); }catch(e){}
+    if(res.ok && parsed && parsed.ok){
+      localStorage.setItem(LS_SYNC_LAST, new Date().toISOString());
+      localStorage.removeItem(LS_SYNC_ERR);
+    }else{
+      localStorage.setItem(LS_SYNC_ERR, 'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (HTTP '+res.status+') — ตรวจสอบว่า deploy แบบ "Anyone" และเป็นลิงก์ /exec');
+    }
+  }catch(e){
+    localStorage.setItem(LS_SYNC_ERR, 'เชื่อมต่อไม่สำเร็จ: '+e.message);
+  }
+  updateSyncStatusDisplay();
 }
 async function syncPull(){
   const url = getSyncUrl();
   if(!url) return;
   try{
     const res = await fetch(url);
-    const data = await res.json();
+    const text = await res.text();
+    const data = JSON.parse(text);
     if(Array.isArray(data.tasks)) saveTasks(data.tasks);
     if(Array.isArray(data.routines)) saveRoutines(data.routines);
     renderTasks(); renderRoutines();
-  }catch(e){ /* offline or not deployed yet */ }
+    localStorage.setItem(LS_SYNC_LAST, new Date().toISOString());
+    localStorage.removeItem(LS_SYNC_ERR);
+  }catch(e){
+    localStorage.setItem(LS_SYNC_ERR, 'ดึงข้อมูลไม่สำเร็จ: '+e.message);
+  }
+  updateSyncStatusDisplay();
 }
 
 /* ---------- Init ---------- */
