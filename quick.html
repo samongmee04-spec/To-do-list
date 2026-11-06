@@ -62,7 +62,7 @@
 <body>
 <div class="q">
   <div class="q-top">
-    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v4</span></div>
+    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v5</span></div>
     <a class="q-open" href="index.html">เปิดแอป ›</a>
   </div>
   <div class="q-status" id="qStatus">กำลังเตรียมไมค์...</div>
@@ -240,7 +240,10 @@ function pocketSlot(text){
 /* คืนค่ารายจ่าย ถ้าประโยคนี้เป็นเรื่องเงิน ไม่งั้นคืน null */
 function pocketParse(seg){
   const s = moneyNormalize(seg);
-  if(!s || VOICE_ALIASES.some(a=>a.re.test(s))) return null;   // พูดชื่อลิสต์ = งาน to-do
+  if(!s) return null;
+  // ขึ้นต้นด้วยชื่อลิสต์ = งาน to-do (ไม่นับคำว่า "ด่วน" ใน "ทางด่วน")
+  const s2 = s.replace(/ทางด่วน/g,' ').trim();
+  if(VOICE_ALIASES.some(a=>new RegExp('^\\s*(?:'+a.re.source+')','i').test(s2))) return null;
   const m = findMoney(s); if(!m || !(m.n>0)) return null;
   const slot = pocketSlot(s);
   if(!m.baht && !slot.known) return null;                        // เลขเฉย ๆ ไม่มีคำว่าบาท และไม่รู้จักคำ → ไม่ใช่เงิน
@@ -530,6 +533,11 @@ function saveSpoken(text){
   writeOps(ops);
 }
 
+$('qMic').innerHTML = MIC_SVG;
+$('qMic').addEventListener('click', ()=>{
+  if(listening){ try{ rec.stop(); }catch(e){} }
+  else startListening(false);
+});
 $('qRetry').addEventListener('click', ()=>{ if(pending) writeOps(pending); });
 $('qUndo').addEventListener('click', ()=>{
   if(!Array.isArray(lastSaved) || !lastSaved.length) return;
