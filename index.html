@@ -598,6 +598,10 @@
   .note-editor img.sel{outline:3px solid #F4A340;outline-offset:1px;}
   .nv-imgbar{display:none;position:absolute;left:50%;bottom:10px;transform:translateX(-50%);gap:6px;padding:6px;border-radius:16px;background:rgba(90,103,79,.95);z-index:3;white-space:nowrap;}
   .nv-imgbar.show{display:flex;}
+  .sync-state{font-size:.72rem;white-space:nowrap;margin-left:4px;}
+  .sync-state.ok{color:#4E8A4A;}
+  .sync-state.wait{color:#B08A2E;}
+  .sync-state.off{color:#B4533A;}
   .nv-imgbar button{border:none;border-radius:11px;padding:7px 10px;background:#FEECD5;color:#3F4A36;font-family:'Prompt',sans-serif;font-size:.78rem;cursor:pointer;}
 </style>
 </head>
@@ -606,7 +610,7 @@
   <div class="header-row">
     <div>
       <h1>📔 สมุดจดของฉัน</h1>
-      <div class="sub">To do list เรื่องที่ต้องทำ</div>
+      <div class="sub">To do list เรื่องที่ต้องทำ <span class="sync-state" id="syncState"></span></div>
     </div>
     <button class="gear-btn" id="gearBtn" onclick="openSyncSettings()" title="ตั้งค่าซิงก์กับ Firebase">⚙️</button>
   </div>
@@ -785,7 +789,7 @@
     <div id="notesList"></div>
   </div>
 
-  <div class="footer-note">แตะกล่องเช็คเพื่อเปลี่ยนสถานะ • งานที่ยังไม่เสร็จจะเลื่อนไปวันถัดไปให้อัตโนมัติ</div>
+  <div class="footer-note">แตะกล่องเช็คเพื่อเปลี่ยนสถานะ • งานที่ยังไม่เสร็จจะเลื่อนไปวันถัดไปให้อัตโนมัติ • ซิงก์ v2</div>
 </div>
 
 <!-- Modal -->
@@ -899,19 +903,23 @@ let uid = 0;
 function newId(){ return Date.now().toString(36)+'-'+(uid++); }
 
 /* ---------- Rollover: unfinished tasks move to today ---------- */
+/* With sync on, this waits for the first fresh copy from Firebase, so an old copy kept on
+   this device can never push back a task that was deleted on another device. */
 function rolloverTasks(){
+  if(fbDb && !tasksSynced) return;
   const t = loadTasks();
   const today = todayStr();
   let changed = false;
   t.forEach(task=>{
     if(task.status==='process' && task.date < today){
-      if(!task.origDate) task.origDate = task.date;
+      const orig = task.origDate || task.date;
+      task.origDate = orig;
       task.date = today;
       changed = true;
-      pushTaskToFirebase(task);
+      fbPatch('tasks/' + task.id, cur => (cur.status==='process' && cur.date < today) ? {...cur, date:today, origDate:cur.origDate || cur.date} : cur);
     }
   });
-  if(changed) saveTasks(t);
+  if(changed){ saveTasks(t); renderTasks(); }
 }
 
 /* ---------- Date/time + weather ---------- */
@@ -1062,29 +1070,35 @@ function addTask(group){
   pushTaskToFirebase(task);
 }
 
-function toggleTask(id){
+/* Change only the given fields of one task, here and in Firebase. If the task was deleted
+   on another device, nothing is written (it does not come back). */
+function updateTask(id, changes, removeKeys){
   const t = loadTasks();
   const task = t.find(x=>x.id===id);
-  if(!task) return;
-  task.status = task.status==='done' ? 'process' : 'done';
-  if(task.status==='process'){ task.date = todayStr(); delete task.origDate; }
+  if(!task) return null;
+  Object.assign(task, changes);
+  (removeKeys||[]).forEach(k=>delete task[k]);
   saveTasks(t);
   renderTasks();
-  pushTaskToFirebase(task);
+  fbPatch('tasks/' + id, cur=>{
+    const next = {...cur, ...changes};
+    (removeKeys||[]).forEach(k=>delete next[k]);
+    return next;
+  });
+  return task;
+}
+function toggleTask(id){
+  const task = loadTasks().find(x=>x.id===id);
+  if(!task) return;
+  if(task.status==='done') updateTask(id, {status:'process', date:todayStr()}, ['origDate']);
+  else updateTask(id, {status:'done'});
 }
 function deleteTask(id){
   saveTasks(loadTasks().filter(x=>x.id!==id));
   renderTasks();
   removeTaskFromFirebase(id);
 }
-function hideTask(id){
-  const t = loadTasks();
-  const task = t.find(x=>x.id===id);
-  if(task) task.hidden = true;
-  saveTasks(t);
-  renderTasks();
-  pushTaskToFirebase(task);
-}
+function hideTask(id){ updateTask(id, {hidden:true}); }
 
 /* ---------- Tabs ---------- */
 function switchTab(name){
@@ -1299,14 +1313,29 @@ function addProject(){
   renderProjects();
   pushProjectToFirebase(p);
 }
-function updateProjectField(id, field, value){
+/* Apply one change to a project here and to the latest copy in Firebase (not a whole old copy),
+   so steps added/removed on another device are kept, and a deleted project never comes back. */
+function decodeProject(p){
+  let steps=[], images=[];
+  try{ steps = Array.isArray(p.steps) ? p.steps : JSON.parse(p.steps||'[]'); }catch(e){}
+  try{ images = Array.isArray(p.images) ? p.images : JSON.parse(p.images||'[]'); }catch(e){}
+  return {...p, steps, images};
+}
+function encodeProject(p){ return {...p, steps: JSON.stringify(p.steps||[]), images: JSON.stringify(p.images||[])}; }
+function mutateProject(id, fn, rerender){
   const projects = loadProjects();
   const p = projects.find(x=>x.id===id);
-  if(!p) return;
-  p[field] = value;
+  if(!p) return null;
+  p.steps = p.steps || []; p.images = p.images || [];
+  fn(p);
   saveProjects(projects);
-  if(field === 'deadline') renderProjects();
-  pushProjectToFirebase(p);
+  if(rerender !== false) renderProjects();
+  fbPatch('projects/' + id, cur=>{ const rp = decodeProject(cur); fn(rp); return encodeProject(rp); });
+  return p;
+}
+function imgKey(entry){ return typeof entry === 'string' ? entry : (entry && entry.id); }
+function updateProjectField(id, field, value){
+  mutateProject(id, p=>{ p[field] = value; }, field === 'deadline');
 }
 function deleteProject(id){
   if(!confirm('ลบเรื่องนี้ถาวร (รวมขั้นตอนและรูปทั้งหมด)?')) return;
@@ -1317,46 +1346,23 @@ function deleteProject(id){
   renderProjects();
   removeProjectFromFirebase(id);
 }
-function hideProject(id){
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===id);
-  if(p) p.hidden = true;
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
-}
+function hideProject(id){ mutateProject(id, p=>{ p.hidden = true; }); }
 function addStep(id){
   const input = document.getElementById('stepInput-'+id);
   const text = input.value.trim();
   if(!text) return;
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===id);
-  if(!p) return;
-  p.steps = p.steps || [];
-  p.steps.push({id:newId(), text, done:false});
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
+  const step = {id:newId(), text, done:false};
+  mutateProject(id, p=>{ if(!p.steps.some(x=>x.id===step.id)) p.steps.push({...step}); });
 }
 function toggleStep(pid, sid){
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===pid);
-  if(!p) return;
-  const s = (p.steps||[]).find(x=>x.id===sid);
+  const p = loadProjects().find(x=>x.id===pid);
+  const s = p && (p.steps||[]).find(x=>x.id===sid);
   if(!s) return;
-  s.done = !s.done;
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
+  const done = !s.done;
+  mutateProject(pid, pr=>{ const st = pr.steps.find(x=>x.id===sid); if(st) st.done = done; });
 }
 function deleteStep(pid, sid){
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===pid);
-  if(!p) return;
-  p.steps = (p.steps||[]).filter(x=>x.id!==sid);
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
+  mutateProject(pid, p=>{ p.steps = p.steps.filter(x=>x.id!==sid); });
 }
 
 async function addProjectImage(id, inputEl){
@@ -1387,25 +1393,21 @@ async function addProjectImage(id, inputEl){
     }
   }
   if(!added.length) return;
-  projects = loadProjects();
-  p = projects.find(x=>x.id===id);
-  if(!p) return;
-  p.images = [...(p.images||[]), ...added].slice(0, MAX_PROJECT_IMAGES);
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
-  showToast('เพิ่มรูปแล้ว ✓');
+  const ok = mutateProject(id, pr=>{
+    const have = new Set(pr.images.map(imgKey));
+    pr.images = [...pr.images, ...added.filter(a=>!have.has(a.id))].slice(0, MAX_PROJECT_IMAGES);
+  });
+  if(ok) showToast('เพิ่มรูปแล้ว ✓');
 }
 function removeProjectImage(id, idx){
   if(!confirm('ลบรูปนี้?')) return;
-  const projects = loadProjects();
-  const p = projects.find(x=>x.id===id);
+  const p = loadProjects().find(x=>x.id===id);
   if(!p) return;
-  const removed = (p.images||[]).splice(idx, 1)[0];
+  const removed = (p.images||[])[idx];
+  if(!removed) return;
+  const key = imgKey(removed);
   dropFullImage(removed);
-  saveProjects(projects);
-  renderProjects();
-  pushProjectToFirebase(p);
+  mutateProject(id, pr=>{ pr.images = pr.images.filter(x=>imgKey(x)!==key); });
 }
 
 /* ---------- Full-screen image viewer: sharp image, pinch / double-tap zoom, swipe, download ---------- */
@@ -1702,6 +1704,33 @@ const LS_FB_CONFIG = 'jd_fb_config';
 const LS_SYNC_LAST = 'jd_sync_last';
 const LS_SYNC_ERR = 'jd_sync_err';
 let fbApp = null, fbDb = null;
+let tasksSynced = false, fbConnected = null, listenersOn = false;
+
+/* Change one record from its latest copy in Firebase. `mutate` gets the current value and returns
+   the new one. If the record no longer exists (deleted on another device), nothing is written.
+   (Returning null for null makes Firebase re-check with the server before giving up.) */
+function fbPatch(path, mutate){
+  if(!fbDb) return Promise.resolve();
+  return fbDb.ref(path).transaction(cur => (cur === null || cur === undefined) ? cur : mutate(cur))
+    .catch(e=>{
+      localStorage.setItem(LS_SYNC_ERR, 'ส่งข้อมูลไม่สำเร็จ: ' + e.message);
+      updateSyncStatusDisplay();
+    });
+}
+/* Create a record only if it is not already there (used when first connecting a device). */
+function fbCreateIfMissing(path, value){
+  if(!fbDb) return;
+  fbDb.ref(path).transaction(cur => (cur === null || cur === undefined) ? value : undefined).catch(()=>{});
+}
+
+function renderSyncState(){
+  const el = document.getElementById('syncState');
+  if(!el) return;
+  if(!fbDb){ el.textContent = ''; el.className = 'sync-state'; return; }
+  if(fbConnected === false){ el.textContent = '○ ออฟไลน์ — จะซิงก์เมื่อมีเน็ต'; el.className = 'sync-state off'; return; }
+  if(!tasksSynced){ el.textContent = '◌ กำลังซิงก์…'; el.className = 'sync-state wait'; return; }
+  el.textContent = '● ซิงก์แล้ว'; el.className = 'sync-state ok';
+}
 
 function getFbConfig(){
   try{ return JSON.parse(localStorage.getItem(LS_FB_CONFIG) || 'null'); }catch(e){ return null; }
@@ -1753,8 +1782,9 @@ function saveSyncUrl(){
     localStorage.setItem(LS_FB_CONFIG, JSON.stringify(cfg));
     localStorage.removeItem(LS_SYNC_ERR);
     if(!fbApp){ fbApp = firebase.initializeApp(cfg); fbDb = firebase.database(); }
-    localTasksSnapshot.forEach(t=> pushTaskToFirebase(t));
-    localProjectsSnapshot.forEach(p=> pushProjectToFirebase(p));
+    // only adds what the database doesn't have yet — never overwrites newer data
+    localTasksSnapshot.forEach(t=> t && t.id && fbCreateIfMissing('tasks/' + t.id, t));
+    localProjectsSnapshot.forEach(p=> p && p.id && fbCreateIfMissing('projects/' + p.id, encodeProject(p)));
     attachFirebaseListeners();
   }catch(e){
     localStorage.setItem(LS_SYNC_ERR, 'อ่านค่าที่วางไม่ได้: '+e.message);
@@ -1763,8 +1793,12 @@ function saveSyncUrl(){
   closeSyncModal();
 }
 function clearSyncUrl(){
-  if(fbDb){ fbDb.ref('tasks').off(); fbDb.ref('projects').off(); }
-  fbApp = null; fbDb = null;
+  if(fbDb){
+    ['tasks','projects','notes','.info/connected'].forEach(p=>{ try{ fbDb.ref(p).off(); }catch(e){} });
+    if(schedRef){ try{ schedRef.off(); }catch(e){} schedRef = null; }
+  }
+  fbApp = null; fbDb = null; tasksSynced = false; fbConnected = null; listenersOn = false;
+  renderSyncState();
   localStorage.removeItem(LS_FB_CONFIG);
   localStorage.removeItem(LS_SYNC_ERR);
   localStorage.removeItem(LS_SYNC_LAST);
@@ -1788,26 +1822,30 @@ function initFirebaseIfConfigured(){
 }
 
 function attachFirebaseListeners(){
-  if(!fbDb) return;
+  if(!fbDb || listenersOn) return;
+  listenersOn = true;
+  renderSyncState();
+  fbDb.ref('.info/connected').on('value', snap=>{
+    fbConnected = !!snap.val();
+    renderSyncState();
+  });
   fbDb.ref('tasks').on('value', snap=>{
     const val = snap.val() || {};
     saveTasks(Object.values(val));
+    tasksSynced = true;
     renderTasks();
+    rolloverTasks();          // safe now: works on the fresh copy from Firebase
     localStorage.setItem(LS_SYNC_LAST, new Date().toISOString());
     localStorage.removeItem(LS_SYNC_ERR);
     updateSyncStatusDisplay();
+    renderSyncState();
   }, err=>{
     localStorage.setItem(LS_SYNC_ERR, 'อ่านข้อมูลงานไม่สำเร็จ: '+err.message);
     updateSyncStatusDisplay();
   });
   fbDb.ref('projects').on('value', snap=>{
     const val = snap.val() || {};
-    const arr = Object.values(val).map(p=>{
-      let steps=[], images=[];
-      try{ steps = JSON.parse(p.steps||'[]'); }catch(e){}
-      try{ images = JSON.parse(p.images||'[]'); }catch(e){}
-      return {...p, steps, images};
-    });
+    const arr = Object.values(val).map(decodeProject);
     saveProjects(arr);
     renderProjects();
     localStorage.setItem(LS_SYNC_LAST, new Date().toISOString());
@@ -1832,10 +1870,9 @@ function removeTaskFromFirebase(id){
   if(!fbDb) return;
   fbDb.ref('tasks/'+id).remove();
 }
-function pushProjectToFirebase(p){
+function pushProjectToFirebase(p){   // used only for brand-new projects
   if(!fbDb || !p) return;
-  const payload = {...p, steps: JSON.stringify(p.steps||[]), images: JSON.stringify(p.images||[])};
-  fbDb.ref('projects/'+p.id).set(payload).catch(e=>{
+  fbDb.ref('projects/'+p.id).set(encodeProject(p)).catch(e=>{
     localStorage.setItem(LS_SYNC_ERR, 'ส่งข้อมูลกิจกรรมไม่สำเร็จ: '+e.message);
     updateSyncStatusDisplay();
   });
@@ -2137,13 +2174,7 @@ function moveSelectHtml(id){
 }
 function moveTask(id, group){
   if(!group) return;
-  const t = loadTasks();
-  const task = t.find(x=>x.id===id);
-  if(!task) return;
-  task.group = group;
-  saveTasks(t);
-  renderTasks();
-  pushTaskToFirebase(task);
+  if(!updateTask(id, {group})) return;
   const g = VOICE_GROUPS.find(x=>x.key===group);
   showToast('ย้ายไป “' + g.label + '” แล้ว');
 }
@@ -2224,22 +2255,15 @@ function readDueInputs(){
 function commitDue(showMsg){
   const v = readDueInputs();
   if(!v){ showToast('ใส่วันที่และเวลาให้ครบก่อนนะ'); return null; }
-  const tasks = loadTasks();
-  const task = tasks.find(x=>x.id===dueTaskId);
+  const task = updateTask(dueTaskId, {due:v.due, remind:v.remind});
   if(!task) return null;
-  task.due = v.due; task.remind = v.remind;
-  saveTasks(tasks); renderTasks(); pushTaskToFirebase(task);
   if(v.remind >= 0) localStorage.setItem('jd_remind_default', String(v.remind));
   if(showMsg) showToast('บันทึกเวลาแล้ว');
   return task;
 }
 function saveDue(){ if(commitDue(true)) closeDue(); }
 function clearDue(){
-  const tasks = loadTasks();
-  const task = tasks.find(x=>x.id===dueTaskId);
-  if(!task) return;
-  delete task.due; delete task.remind;
-  saveTasks(tasks); renderTasks(); pushTaskToFirebase(task);
+  if(!updateTask(dueTaskId, {}, ['due','remind'])) return;
   closeDue(); showToast('ล้างเวลาแล้ว');
 }
 
@@ -2427,10 +2451,18 @@ function saveSched(h, text){
   if(t) all[date][h] = t; else delete all[date][h];
   schedSave(all);
   if(fbDb){
+    const key = date + '|' + h;
+    schedPendingSet(key, true);              // remembered until Firebase confirms it got the change
     const r = fbDb.ref('schedule/' + date + '/' + h);
-    if(t) r.set(t); else r.remove();
+    (t ? r.set(t) : r.remove()).then(()=> schedPendingSet(key, false)).catch(()=>{});
   }
   updateSchedMeta();
+}
+function schedPending(){ try{ return JSON.parse(localStorage.getItem('jd_sched_pending') || '{}'); }catch(e){ return {}; } }
+function schedPendingSet(key, on){
+  const m = schedPending();
+  if(on) m[key] = 1; else delete m[key];
+  try{ localStorage.setItem('jd_sched_pending', JSON.stringify(m)); }catch(e){}
 }
 function updateSchedFields(date){
   const data = schedLoad()[date] || {};
@@ -2453,8 +2485,16 @@ function bindScheduleSync(){
     const local = all[date] || {};
     if(first){
       first = false;
-      // keep anything typed on this device that never reached the server (e.g. while offline)
-      Object.keys(local).forEach(h=>{ if(!remote[h] && local[h]){ remote[h] = local[h]; fbDb.ref('schedule/' + date + '/' + h).set(local[h]); } });
+      // resend only edits made on this device that Firebase never confirmed (e.g. typed offline, then closed).
+      // Old entries that were cleared on another device are NOT pushed back.
+      const pend = schedPending();
+      Object.keys(pend).forEach(k=>{
+        const [d, h] = k.split('|');
+        if(d !== date) return;
+        const r = fbDb.ref('schedule/' + date + '/' + h);
+        if(local[h]){ remote[h] = local[h]; r.set(local[h]).then(()=>schedPendingSet(k, false)).catch(()=>{}); }
+        else { delete remote[h]; r.remove().then(()=>schedPendingSet(k, false)).catch(()=>{}); }
+      });
     }
     const clean = {};
     Object.keys(remote).forEach(h=>{ if(remote[h]) clean[h] = remote[h]; });
@@ -2685,7 +2725,7 @@ function refreshNoteView(force){
   }
   const ed = v.querySelector('.note-editor');
   const t = document.getElementById('nvTitle');
-  if(document.activeElement !== ed){
+  if(document.activeElement !== ed && !noteDirty[noteViewId]){
     const html = sanitizeNoteHtml(n.html);
     if(sanitizeNoteHtml(ed.innerHTML) !== html){ ed.innerHTML = html; updateNoteEmpty(ed); }
   }
@@ -2798,21 +2838,35 @@ function updateNoteTitle(id, value){
   const notes = loadNotes();
   const n = notes.find(x=>x.id === id);
   if(!n) return;
-  n.title = value; n.updatedAt = Date.now();
+  const ch = {title:value, updatedAt:Date.now()};
+  Object.assign(n, ch);
   saveNotes(notes);
-  pushNoteToFirebase(n);
+  patchNote(id, ch);
 }
+/* change only these fields of a note in Firebase; a note deleted elsewhere is not recreated */
+function patchNote(id, changes, removeKeys){
+  fbPatch('notes/' + id, cur=>{
+    const next = {...cur, ...changes};
+    (removeKeys||[]).forEach(k=>delete next[k]);
+    return next;
+  });
+}
+const noteDirty = {};
 function saveNoteContent(id, ed){
+  if(!noteDirty[id]) return;           // nothing typed on this device: keep whatever is newest in Firebase
+  noteDirty[id] = false;
   const notes = loadNotes();
   const n = notes.find(x=>x.id === id);
   if(!n) return;
   const html = sanitizeNoteHtml(ed.innerHTML);
   if(html === (n.html || '')) return;
-  n.html = html; n.updatedAt = Date.now();
+  const ch = {html, updatedAt:Date.now()};
+  Object.assign(n, ch);
   saveNotes(notes);
-  pushNoteToFirebase(n);
+  patchNote(id, ch);
 }
 function onNoteInput(id, ed){
+  noteDirty[id] = true;
   updateNoteEmpty(ed);
   clearTimeout(noteTimers[id]);
   noteTimers[id] = setTimeout(()=> saveNoteContent(id, ed), 800);
@@ -2874,10 +2928,13 @@ function hideNote(id){
   const notes = loadNotes();
   const n = notes.find(x=>x.id === id);
   if(!n) return;
-  n.hidden = true;
-  saveNotes(notes);
-  if(noteViewId === id) closeNote(true); else renderNotes();
-  pushNoteToFirebase(n);
+  if(noteViewId === id) closeNote(true);   // saves any last typing first
+  const fresh = loadNotes();
+  const fn = fresh.find(x=>x.id === id);
+  if(fn) fn.hidden = true;
+  saveNotes(fresh);
+  renderNotes();
+  patchNote(id, {hidden:true});
 }
 function deleteNote(id){
   if(!confirm('ลบสมุดเล่มนี้ถาวร (รวมข้อความและรูป)?')) return;
@@ -2910,7 +2967,7 @@ async function addNoteImage(id, inputEl){
     n.image = {id:imgId, thumb}; n.updatedAt = Date.now();
     saveNotes(notes);
     renderNotes();
-    pushNoteToFirebase(n);
+    patchNote(id, {image:n.image, updatedAt:n.updatedAt});
     showToast('เพิ่มรูปแล้ว ✓');
   }catch(e){
     showToast('ใส่รูปนี้ไม่สำเร็จ: ' + (e && e.message ? e.message : 'ลองใหม่อีกครั้ง'));
@@ -2925,7 +2982,7 @@ function removeNoteImage(id){
   delete n.image; n.updatedAt = Date.now();
   saveNotes(notes);
   renderNotes();
-  pushNoteToFirebase(n);
+  patchNote(id, {updatedAt:n.updatedAt}, ['image']);
 }
 function openNoteImage(id){
   const n = loadNotes().find(x=>x.id === id);
@@ -2945,9 +3002,20 @@ function init(){
   renderSchedule();
   renderNotes();
   applySections();
+  renderSyncState();
   setInterval(schedTick, 60000);
 }
 init();
+
+/* Coming back to a tab/app that was left open (computer asleep, phone in pocket):
+   nudge the connection if it dropped, and roll over tasks if the day changed. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible') return;
+  if(fbDb && fbConnected === false){ try{ fbDb.goOffline(); fbDb.goOnline(); }catch(e){} }
+  rolloverTasks();
+  renderSyncState();
+});
+window.addEventListener('online', ()=>{ if(fbDb){ try{ fbDb.goOnline(); }catch(e){} } });
 
 /* ---------- colourful press feedback for every button ---------- */
 (function(){
