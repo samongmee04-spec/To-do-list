@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="theme-color" content="#FEE2BF">
+<meta name="theme-color" content="#e8e9ec">
 <title>จดด่วน</title>
 <link rel="icon" href="icon-quick-192.png">
 <link rel="apple-touch-icon" href="icon-quick-192.png">
@@ -13,8 +13,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
-    --bg:#FEE2BF; --surface:#FEECD5; --sh-dark:#D5BEA0; --sh-light:#FFFFFF;
-    --ink:#5A674F; --ink-soft:#99A192; --urgent-deep:#D1A918;
+    --bg:#e8e9ec; --surface:#f1f2f4; --sh-dark:#c6cad1; --sh-light:#FFFFFF;
+    --ink:#1c1e22; --ink-soft:#8b919b; --urgent-deep:#1c1e22;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -34,7 +34,7 @@
   }
   .q-mic svg{width:56px;height:56px;}
   .q-mic.on{background:var(--urgent-deep);color:#fff;animation:pulse 1.2s infinite;}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(209,169,24,.55);}70%{box-shadow:0 0 0 28px rgba(209,169,24,0);}100%{box-shadow:0 0 0 0 rgba(209,169,24,0);}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(28,30,34,.45);}70%{box-shadow:0 0 0 28px rgba(28,30,34,0);}100%{box-shadow:0 0 0 0 rgba(28,30,34,0);}}
   .q-heard{
     width:100%;margin-top:26px;min-height:3.2em;padding:12px 16px;border-radius:18px;font-size:.92rem;line-height:1.5;
     background:var(--surface);color:var(--ink);word-break:break-word;
@@ -62,7 +62,7 @@
 <body>
 <div class="q">
   <div class="q-top">
-    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v5</span></div>
+    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v6</span></div>
     <a class="q-open" href="index.html">เปิดแอป ›</a>
   </div>
   <div class="q-status" id="qStatus">กำลังเตรียมไมค์...</div>
@@ -73,26 +73,24 @@
     <button class="q-btn" id="qUndo" style="display:none;">↩ ยกเลิกที่เพิ่งบันทึก</button>
     <button class="q-btn" id="qRetry" style="display:none;">ลองบันทึกอีกครั้ง</button>
   </div>
-  <div class="q-hint">รายจ่าย: “BTS เช้า 47 บาท” · รายรับ: “รายรับ KTB 30000 บาท”<br>หัวข้อ: พูดชื่อโปรเจกต์หรือสมุดโน๊ตนำหน้า เช่น “ทริปเชียงใหม่ จองที่พัก”<br>พูดชื่อลิสต์นำหน้าได้ เช่น “ด่วน ทำป้าย ต่อไป งานวันนี้ บันทึกรายงาน”<br>ถ้าไม่พูดชื่อลิสต์ จะเข้าช่อง “จดด่วน (รอแยก)” ให้มาย้ายทีหลังในแอป</div>
+  <div class="q-hint">รายจ่าย: “BTS เช้า 47 บาท” · รายรับ: “รายรับ KTB 30000 บาท”<br>หัวข้อ: พูดชื่อโปรเจกต์หรือสมุดโน๊ตนำหน้า เช่น “ทริปเชียงใหม่ จองที่พัก”<br>พูดชื่อลิสต์นำหน้าได้ เช่น “ด่วน ทำป้าย ต่อไป งานที่รอ ส่งรายงาน”<br>ถ้าไม่พูดชื่อลิสต์ จะเข้าช่อง “จดด่วน (รอแยก)” ให้มาย้ายทีหลังในแอป</div>
 </div>
 
 <script>
 
 const VOICE_GROUPS = [
   {key:'inbox',     label:'จดด่วน (รอแยก)', tab:null},
-  {key:'urgent',    label:'ด่วน!',          tab:'office'},
-  {key:'today',     label:'งานวันนี้',       tab:'office'},
-  {key:'important', label:'เรื่องสำคัญ',     tab:'myself'},
-  {key:'shopping',  label:'ของต้องซื้อ',     tab:'myself'},
-  {key:'exercise',  label:'ออกกำลังกาย',     tab:'myself'},
+  {key:'urgent',    label:'ด่วน! (Office)', tab:'office'},
+  {key:'wait',      label:'รอ (Office)',    tab:'office'},
+  {key:'important', label:'เรื่องสำคัญ',     tab:'self'},
+  {key:'shopping',  label:'ของต้องซื้อ',     tab:'self'},
   {key:'pocket',    label:'💰 Pocket',       tab:null}
 ];
 const VOICE_ALIASES = [
-  {key:'shopping',  re:/(?:รายการ\s*(?:ที่\s*)?ต้องซื้อ|ลิ[สท]ต?์?\s*(?:ที่\s*)?ต้องซื้อ|ของ\s*(?:ที่\s*)?ต้องซื้อ|ลิ[สท]ต?์?\s*ซื้อของ|ช็?อปปิ้ง|ช้อปปิ้ง|shopping(?:\s*list)?)/i},
+  {key:'shopping',  re:/(?:รายการ\s*(?:ที่\s*)?ต้องซื้อ|ลิ[สท]ต?์?\s*(?:ที่\s*)?ต้องซื้อ|ของ\s*(?:ที่\s*)?ต้องซื้อ|ลิ[สท]ต?์?\s*ซื้อของ|ช็?อปปิ้ง|ช้อปปิ้ง|shopping(?:\s*list)?|buying)/i},
   {key:'urgent',    re:/(?:เรื่องด่วน|งานด่วน|ด่วนมาก|ต้องทำเลย|ด่วน|urgent)/i},
   {key:'important', re:/(?:เรื่องสำคัญ|งานสำคัญ|ลิ[สท]ต?์?สำคัญ|รายการสำคัญ|important)/i},
-  {key:'exercise',  re:/(?:ออกกำลังกาย|เวิร์ค?เอาท์|workout|exercise)/i},
-  {key:'today',     re:/(?:งานวันนี้|เรื่องวันนี้|ลิ[สท]ต?์?วันนี้|ของวันนี้)/i},
+  {key:'wait',      re:/(?:งานที่รอ|เรื่องที่รอ|รายการรอ|ลิ[สท]ต?์?รอ|งานรอ|รอผล|รอตอบ|waiting|wait|งานวันนี้|เรื่องวันนี้|ลิ[สท]ต?์?วันนี้)/i},
   {key:'inbox',     re:/(?:รอแยก|จดด่วน)/i}
 ];
 const VOICE_UNITS = 'ด้าม|แท่ง|อัน|ชิ้น|กล่อง|ขวด|แพ็ค|แพค|แพ็ก|ห่อ|ถุง|ใบ|เล่ม|แผ่น|ลูก|ตัว|คู่|ชุด|โหล|กระป๋อง|ถัง|กิโลกรัม|กิโล|กก\\.?|กรัม|ลิตร|ซอง|หลอด|ม้วน|เส้น|ต้น|คัน|หัว|ฟอง|แก้ว|จาน|ชาม|ถ้วย|เม็ด|มัด|กำ|ก้อน|ที่|pcs';
