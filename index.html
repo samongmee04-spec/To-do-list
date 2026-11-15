@@ -47,6 +47,11 @@ body{
   overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 .screen.active{display:flex}
+/* ซ่อนแถบเลื่อน แต่ยังเลื่อนด้วยล้อเมาส์/นิ้วได้ตามปกติ */
+.screen{scrollbar-width:none;-ms-overflow-style:none}
+.screen::-webkit-scrollbar{display:none;width:0;height:0}
+html,body{scrollbar-width:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
 /* เว้นที่ด้านล่างให้ปุ่ม OFFICE/SELF ที่ตรึงอยู่กับจอ */
 #scHome{padding-bottom:calc(env(safe-area-inset-bottom) + 92px)}
 
@@ -376,21 +381,20 @@ body{
 /* ---------- ควันชา (หน้า SELF) ---------- */
 .steam{position:absolute;z-index:2;pointer-events:none}
 .steam svg{position:absolute;bottom:0;width:46%;height:100%;overflow:visible;opacity:0;
-  filter:blur(1.2px) drop-shadow(0 0 2px rgba(255,255,255,.6));transform-origin:50% 100%;
+  filter:blur(.9px) drop-shadow(0 0 3px rgba(255,255,255,.9));transform-origin:50% 100%;
   animation:steamUp 3.6s ease-out infinite}
-.steam svg path{fill:none;stroke:#fff;stroke-linecap:round;stroke-width:6}
+.steam svg path{fill:none;stroke:#fff;stroke-linecap:round;stroke-width:7}
 .steam svg:nth-child(1){left:6%;animation-delay:0s}
 .steam svg:nth-child(2){left:30%;animation-delay:1.2s;animation-duration:4s}
 .steam svg:nth-child(3){left:52%;animation-delay:2.4s;animation-duration:3.3s}
 @keyframes steamUp{
   0%  {opacity:0;transform:translate(0,30%) scale(.55,.5) skewX(0deg)}
-  18% {opacity:.85}
+  18% {opacity:1}
   50% {transform:translate(-8%,-10%) scale(.9,.85) skewX(-8deg)}
-  75% {opacity:.45}
+  75% {opacity:.6}
   100%{opacity:0;transform:translate(10%,-55%) scale(1.25,1.15) skewX(10deg)}
 }
 .steam.pot svg path{stroke-width:5}
-@media (prefers-reduced-motion:reduce){ .steam svg{animation:none;opacity:.5} }
 .bsLab{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;letter-spacing:1.8px;color:#8b919b;margin-bottom:12px}
 .bsAdd{display:flex;gap:7px;margin-bottom:8px}
 .bsAdd input{flex:1;min-width:0;height:40px;border:1px solid #d9dbe0;border-radius:11px;padding:0 11px;
@@ -1210,8 +1214,8 @@ body.note-open{overflow:hidden;}
     <img class="selfBg" src="assets/self.webp" alt="">
 
     <!-- ควันลอยจากแก้วชา และกาน้ำชา -->
-    <div class="steam" style="left:36.5%;top:66.5%;width:6.5%;height:9.5%"><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg></div>
-    <div class="steam pot" style="left:12.2%;top:71%;width:5.4%;height:8.2%"><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg></div>
+    <div class="steam" style="left:35.6%;top:63.5%;width:8.5%;height:12.5%"><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg></div>
+    <div class="steam pot" style="left:11.6%;top:69.2%;width:6.8%;height:10%"><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg></div>
 
     <!-- รายการบนกระดาน -->
     <div class="bdList dark"  id="listBuying"    style="left:16.5%;top:18.5%;width:35.5%;height:23%"></div>
@@ -2833,20 +2837,57 @@ function sumDeep(o,depth){
   if(!o||typeof o!=='object'||depth>4) return 0;
   let s=0; for(const k in o) s+=sumDeep(o[k],depth+1); return s;
 }
-const ymNow=()=>todayStr().slice(0,7);
+/* ====== คำนวณแบบเดียวกับแอป me Pocket (คัดลอกค่าตั้งต้นมาจาก Me-pocket/index.html) ======
+   รอบเดือน 25 → 24 · รหัสรอบ = ปี-เดือนที่เริ่ม (15 พ.ย. อยู่ในรอบ 2026-10)
+   Income = รายรับรวมของรอบ
+   Remain = "เงินคงเหลือ" = รายรับรวม − ส่วนที่ยังไม่ได้จ่าย
+            (รายการ Fixed/Utilities/Pay ที่ยังไม่กรอกใช้จริง ตามงบ + งบ Daily ที่ยังเหลือทั้งรอบ)
+   ★ ถ้าแก้รายการ/งบตั้งต้นในโค้ด Pocket ให้แก้ PK_G, PK_AUTO, PK_DBUD ตรงนี้ให้ตรงกันด้วย */
+const PK_CUT=25;
+const PK_G=[['Fixed',[['Mom',5000],['Child',10000],['Psy',4500]]],
+ ['Utilities',[['Mobile',1100],['Net',700],['Watch',200],['Netflix',619],['Electric',3000],['Water',200],['Mid cost',2380],['Insure',20000]]],
+ ['Pay',[['BBL',8000],['Line BK',12000]]]];
+const PK_AUTO_FROM='2026-11-04';
+const PK_AUTO={'ค่าเดินทาง.Motorcycle เช้า':40,'ค่าเดินทาง.MRT เช้า':22,'ค่าเดินทาง.Van':35,'ค่าเดินทาง.BTS เช้า':59,'ค่าเดินทาง.BTS เย็น':58,'ค่าเดินทาง.MRT เย็น':22,'ค่าเดินทาง.Express':35};
+const PK_DBUD={wd:444,sat:2000,sun:2000};
+const pkP2=n=>String(n).padStart(2,'0');
+const pkYm=d=>d.getFullYear()+'-'+pkP2(d.getMonth()+1);
+const pkYmd=d=>pkYm(d)+'-'+pkP2(d.getDate());
+const pkDt=s=>new Date(s+'T00:00');
+const pkOf=d=>d.getDate()>=PK_CUT?pkYm(d):pkYm(new Date(d.getFullYear(),d.getMonth()-1,1));
+const pkStart=P=>{const[y,m]=P.split('-');return new Date(+y,+m-1,PK_CUT)};
+const pkEnd=P=>{const[y,m]=P.split('-');return new Date(+y,+m,PK_CUT-1)};
+const pkSum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0);
+const ymNow=()=>pkOf(new Date());
 function pocketCalc(data){
   if(!data) return null;
-  const ym=ymNow();
-  const mo=(data.m||{})[ym]||{};
-  const income=sumDeep(mo.inc);
-  let spent=0;
-  Object.keys(data.d||{}).forEach(k=>{ if(k.slice(0,7)===ym) spent+=sumDeep(data.d[k]); });
-  return {income, spent, remain:income-spent};
+  const D=Object.assign({bud:{},m:{},d:{}},data);
+  ['bud','m','d'].forEach(k=>{ if(!D[k]||typeof D[k]!=='object') D[k]={}; });
+  const P=pkOf(new Date()), today=pkYmd(new Date());
+  const mo=D.m[P]||{}, inc=mo.inc||{}, exp=mo.exp||{};
+  const income=pkSum(inc);
+  const dKey=s=>{const w=pkDt(s).getDay();return w==0?'sun':w==6?'sat':'wd'};
+  const isAuto=k=>{const w=pkDt(k).getDay();return w>0&&w<6&&k>=PK_AUTO_FROM&&k<=today};
+  const dayE=k=>{const e=D.d[k]||{};return isAuto(k)?Object.assign({},PK_AUTO,e):e};
+  const a=pkYmd(pkStart(P)), b=pkYmd(pkEnd(P));
+  const keys=new Set(Object.keys(D.d));
+  for(let d=pkDt(PK_AUTO_FROM);pkYmd(d)<=today;d.setDate(d.getDate()+1)) if(isAuto(pkYmd(d))) keys.add(pkYmd(d));
+  const daily=[...keys].filter(k=>k>=a&&k<=b).reduce((s,k)=>s+pkSum(dayE(k)),0);
+  let unpaid=0;
+  PK_G.forEach(([g,items])=>items.forEach(([n,def])=>{
+    const ac=+exp[g+'.'+n]||0, bu=D.bud[g+'.'+n]??def;
+    if(!(ac>0)) unpaid+=(+bu||0);
+  }));
+  let dB=0;
+  for(let d=pkStart(P);d<=pkEnd(P);d.setDate(d.getDate()+1)){ const s=pkYmd(d); dB+=+(D.bud[dKey(s)]??PK_DBUD[dKey(s)])||0; }
+  unpaid+=Math.max(0,dB-daily);
+  const spent=pkSum(exp)+daily;
+  return {period:P, income, spent, unpaid, remain:income-unpaid};
 }
 function startPocket(){
   if(PK.unsub||PK.state==='connecting') return;
   const cfg=pocketCfg();
-  if(!cfg){ PK.state='nocfg'; return; }
+  if(!cfg){ PK.state='nocfg'; renderPocket(); return; }
   if(!window.firebase||!firebase.firestore){ PK.state='nosdk'; PK.err='โหลด Firestore ไม่ได้ (ต้องมีอินเทอร์เน็ต)'; return; }
   try{
     PK.state='connecting';
@@ -2877,7 +2918,8 @@ function pocketNow(){
 }
 function renderPocket(){
   const p=pocketNow();
-  $('#valIncome').textContent = p?baht(p.income):'—';
+  const hint = PK.state==='nocfg' ? 'แตะเพื่อเชื่อม Pocket' : (PK.state==='error'||PK.state==='nosdk') ? 'แตะดูสาเหตุ' : PK.state==='connecting' ? 'กำลังโหลด…' : '—';
+  $('#valIncome').textContent = p?baht(p.income):hint;
   $('#valRemain').textContent = p?baht(p.remain):'—';
 }
 /* ---------- แผงตรวจสอบว่าอ่านอะไรได้บ้าง ---------- */
@@ -2888,15 +2930,16 @@ function openPocketCheck(){
   let h=row('สถานะ',st+(PK.err?' — '+PK.err:''));
   h+=row('โปรเจกต์ Pocket',cfg?cfg.projectId:'ไม่พบค่าเชื่อม');
   const c=pocketNow();
-  h+=row('เดือน',ym);
-  h+=row('รายรับเดือนนี้ (Income)',c?baht(c.income):'—');
-  h+=row('รายจ่ายรายวันเดือนนี้',c?baht(c.spent):'—');
-  h+=row('คงเหลือ (Remain)',c?baht(c.remain):'—');
+  h+=row('รอบ (25–24)',ym);
+  h+=row('รายรับรวม (Income)',c?baht(c.income):'—');
+  h+=row('ส่วนที่ยังไม่ได้จ่าย',c&&c.unpaid!=null?baht(c.unpaid):'—');
+  h+=row('เงินคงเหลือ (Remain)',c?baht(c.remain):'—');
+  h+=row('ใช้ไปแล้วในรอบนี้',c?baht(c.spent):'—');
   if(PK.data){
     const mo=(PK.data.m||{})[ym]||{};
-    h+='<div class="pkHead">ช่องข้อมูลของเดือนนี้ใน Pocket</div>';
+    h+='<div class="pkHead">ช่องข้อมูลของรอบนี้ใน Pocket</div>';
     const keys=Object.keys(mo);
-    if(!keys.length) h+='<div class="pkEmpty">ยังไม่มีข้อมูลของเดือนนี้</div>';
+    if(!keys.length) h+='<div class="pkEmpty">ยังไม่มีข้อมูลของรอบนี้</div>';
     keys.forEach(k=>{ h+='<div class="pkKey"><b>'+escapeHtml(k)+'</b><code>'+escapeHtml(JSON.stringify(mo[k]).slice(0,240))+'</code></div>'; });
   }
   if(!cfg) h+='<div class="pkEmpty">เปิดแอปนี้จากโดเมนเดียวกับ Pocket แล้วจะเชื่อมให้อัตโนมัติ<br>หรือกดปุ่มด้านล่างเพื่อวางค่าเชื่อมเอง</div>';

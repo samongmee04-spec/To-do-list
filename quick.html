@@ -62,7 +62,7 @@
 <body>
 <div class="q">
   <div class="q-top">
-    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v6</span></div>
+    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v6.1</span></div>
     <a class="q-open" href="index.html">เปิดแอป ›</a>
   </div>
   <div class="q-status" id="qStatus">กำลังเตรียมไมค์...</div>
@@ -471,7 +471,9 @@ function writeOps(ops){
 
 function saveSpoken(text){
   const segs = String(text).split(/\s*(?:ต่อไป|ถัดไป|ข้อต่อไป)\s*/).filter(x=>x.trim());
-  const date = todayStr(), month = date.slice(0,7);
+  /* Pocket นับรายรับเป็นรอบ 25 → 24 (รหัสรอบ = ปี-เดือนที่เริ่ม) ไม่ใช่เดือนปฏิทิน */
+  const date = todayStr(), _n = new Date(), _p = _n.getDate()>=25 ? _n : new Date(_n.getFullYear(), _n.getMonth()-1, 1);
+  const month = _p.getFullYear()+'-'+String(_p.getMonth()+1).padStart(2,'0');
   const ops = [];
   let last = null;   // เป้าหมายล่าสุดที่พูดชื่อไว้ ใช้ต่อกับช่วงถัดไปที่ไม่ได้บอกชื่อ
   const addTask = (group, t)=>{
