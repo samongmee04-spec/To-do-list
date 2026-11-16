@@ -2394,7 +2394,7 @@ function migrateMn(){
 /* ============================================================
    หน้า OFFICE — ข้อมูลงานอยู่ใน tasks ชุดเดียวกับแอปเดิม (ซิงก์ Firebase)
    URGENT! = group 'urgent' · WAIT = group 'wait' (+ 'today' ของเดิม)
-   ตำแหน่งโน้ตบนบอร์ดจำไว้ในเครื่องนี้ (จอแต่ละเครื่องขนาดไม่เท่ากัน)
+   ตำแหน่งโน้ตบนบอร์ดซิงก์ผ่าน Firebase (board/) เก็บเป็นสัดส่วน 0–1 ของบอร์ด
    ============================================================ */
 const BKEY='mn_board_v1';
 const NOTE_COLORS=['#ffe08a','#ffb5b0','#b7e4c7','#bcd9ff','#e0c6ff','#ffd2a3','#c9ecec'];
@@ -2413,7 +2413,45 @@ let OF={board:[]};
 function loadOffice(){
   try{ OF.board=JSON.parse(localStorage.getItem(BKEY)||'[]')||[]; }catch(e){ OF.board=[]; }
 }
-function saveOffice(){ try{ localStorage.setItem(BKEY,JSON.stringify(OF.board)); }catch(e){} }
+function saveOffice(){
+  try{ localStorage.setItem(BKEY,JSON.stringify(OF.board)); }catch(e){}
+  pushBoardToFirebase();
+}
+/* ---------- ซิงก์บอร์ดผ่าน Firebase (board/) — ตำแหน่งเก็บเป็นสัดส่วน 0–1 จอไหนก็วางตรงกัน ---------- */
+let boardBusy=false, boardPending=null;
+function boardToObj(arr){ const o={}; arr.forEach(b=>{ o[b.id]=b; }); return o; }
+function pushBoardToFirebase(){
+  try{
+    if(!fbDb) return;
+    fbDb.ref('board').set(OF.board.length?boardToObj(OF.board):null).catch(()=>{});
+  }catch(e){}
+}
+function applyRemoteBoard(val){
+  const arr=Object.values(val||{}).filter(b=>b&&b.id&&b.ref);
+  if(boardBusy){ boardPending=arr; return; }   /* กำลังลากอยู่ เอาไว้ใช้ตอนปล่อยนิ้ว */
+  OF.board=arr;
+  try{ localStorage.setItem(BKEY,JSON.stringify(arr)); }catch(e){}
+  if(officeReady) renderOffice();
+}
+function bindBoardSync(){
+  if(!fbDb) return;
+  fbDb.ref('board').on('value',snap=>{
+    const val=snap.val();
+    /* ครั้งแรกของเครื่องนี้: ถ้าบน Firebase ยังว่าง ให้อัปตำแหน่งเดิมในเครื่องขึ้นไป */
+    if(!localStorage.getItem('mn_board_synced')){
+      localStorage.setItem('mn_board_synced','1');
+      if(!val){
+        try{ OF.board=JSON.parse(localStorage.getItem(BKEY)||'[]')||[]; }catch(e){ OF.board=[]; }
+        if(OF.board.length){ pushBoardToFirebase(); return; }
+      }
+    }
+    applyRemoteBoard(val);
+  });
+}
+function boardDragDone(){
+  boardBusy=false;
+  if(boardPending){ const p=boardPending; boardPending=null; applyRemoteBoard(boardToObj(p)); }
+}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const findTask=id=>loadTasks().find(t=>t.id===id&&!t.hidden);
 const findItem=(list,id)=>findTask(id);
@@ -2499,6 +2537,7 @@ function renderBoard(){
       ev.preventDefault(); ev.stopPropagation();
       const r=area.getBoundingClientRect();
       const sw=b.w||NOTE_W, sh=b.h||NOTE_H, sx=ev.clientX, sy=ev.clientY;
+      boardBusy=true;
       const mv=e=>{
         b.w=Math.round(clamp(sw+(e.clientX-sx),86,Math.min(250,r.width-8)));
         b.h=Math.round(clamp(sh+(e.clientY-sy),62,Math.min(230,r.height-8)));
@@ -2509,7 +2548,7 @@ function renderBoard(){
         window.removeEventListener('pointermove',mv);
         window.removeEventListener('pointerup',up);
         window.removeEventListener('pointercancel',up);
-        saveOffice(); renderBoard();
+        boardPending=null; saveOffice(); boardBusy=false; renderBoard();
       };
       window.addEventListener('pointermove',mv);
       window.addEventListener('pointerup',up);
@@ -2526,6 +2565,7 @@ function renderBoard(){
       const baseRot=(b.ref.charCodeAt(0)%5)-2;
       let moved=false, lx=nr.left-r.left, ly=nr.top-r.top;
       el.style.zIndex='8'; el.style.cursor='grabbing';
+      boardBusy=true;
       const mv=e=>{
         if(!moved){
           if(Math.abs(e.clientX-ev.clientX)<4&&Math.abs(e.clientY-ev.clientY)<4) return;
@@ -2547,8 +2587,8 @@ function renderBoard(){
         if(moved){
           b.x=Math.max(0,r.width-nw)?lx/(r.width-nw):0;
           b.y=Math.max(0,r.height-nh)?ly/(r.height-nh):0;
-          saveOffice();
-        } else openItem(listOfTask(it),it.id);
+          boardPending=null; boardBusy=false; saveOffice();
+        } else { boardDragDone(); openItem(listOfTask(it),it.id); }
       };
       el.addEventListener('pointermove',mv);
       el.addEventListener('pointerup',up);
@@ -3600,7 +3640,7 @@ function saveSyncUrl(){
 }
 function clearSyncUrl(){
   if(fbDb){
-    ['tasks','projects','notes','.info/connected'].forEach(p=>{ try{ fbDb.ref(p).off(); }catch(e){} });
+    ['tasks','projects','notes','board','.info/connected'].forEach(p=>{ try{ fbDb.ref(p).off(); }catch(e){} });
     if(schedRef){ try{ schedRef.off(); }catch(e){} schedRef = null; schedBoundKey = null; }
   }
   fbApp = null; fbDb = null; tasksSynced = false; fbConnected = null; listenersOn = false;
@@ -3662,6 +3702,7 @@ function attachFirebaseListeners(){
     localStorage.setItem(LS_SYNC_ERR, 'อ่านข้อมูลกิจกรรมไม่สำเร็จ: '+err.message);
     updateSyncStatusDisplay();
   });
+  bindBoardSync();
   bindScheduleSync();
   bindNotesSync();
 }
