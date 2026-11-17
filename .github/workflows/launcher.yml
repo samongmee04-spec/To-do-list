@@ -1,0 +1,35 @@
+name: Build My Home APK
+on:
+  push:
+    paths: ['MainActivity.java','AndroidManifest.xml','build.gradle','.github/workflows/launcher.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - name: Arrange project
+        run: |
+          A=L/app/src/main
+          mkdir -p $A/java/com/samong/myhome $A/res/mipmap-xxxhdpi
+          cp MainActivity.java $A/java/com/samong/myhome/
+          cp AndroidManifest.xml $A/
+          cp ic_launcher.png $A/res/mipmap-xxxhdpi/
+          cp build.gradle myhome.jks L/app/
+          cp settings.gradle gradle.properties L/
+          printf "plugins {\n  id 'com.android.application' version '8.5.2' apply false\n}\n" > L/build.gradle
+      - name: Build
+        working-directory: L
+        run: gradle assembleRelease --no-daemon
+      - name: Publish
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          cp L/app/build/outputs/apk/release/app-release.apk MyHome.apk
+          gh release delete launcher --yes --cleanup-tag || true
+          gh release create launcher MyHome.apk --title "My Home build ${{ github.run_number }}" --notes "MyHome.apk"
