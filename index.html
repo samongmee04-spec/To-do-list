@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="launcher-shim.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -318,6 +319,13 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
 .sbar .oback{background:#f0e4d8;color:#3a2920}
 .sbar .otitle{color:#f2e7dd}
 .sbar .opill{background:#4c3729;border-color:#5e4635;color:#e4d5c6}
+/* ปุ่ม App — โชว์เฉพาะตอนเปิดผ่านแอป Launcher บน Android */
+.oapp{display:none;height:30px;padding:0 11px 0 9px;border-radius:15px;border:0;background:#1c1e22;color:#fff;
+  font-family:'Nunito',sans-serif;font-size:11.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;
+  align-items:center;gap:5px;flex:none}
+.oapp svg{width:13px;height:13px}
+html.inLauncher .oapp{display:inline-flex}
+.sbar .oapp{background:#f0e4d8;color:#3a2920}
 
 /* เวทีเต็มจอ ต่อสีผนังด้านบนและสีโต๊ะด้านล่างให้ภาพวางพอดีทุกขนาดจอ */
 .selfStage{position:relative;flex:1 1 auto;min-height:0;width:100%;border-radius:22px;overflow:hidden;
@@ -1123,6 +1131,7 @@ body.note-open{overflow:hidden;}
   <div class="obar">
     <button class="oback" data-go="scHome" aria-label="กลับ"></button>
     <div class="otitle">OFFICE</div>
+    <button class="oapp" onclick="openPhoneApps()" aria-label="ไปหน้าแอปของมือถือ"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.6"/><rect x="9" y="1" width="6" height="6" rx="1.6"/><rect x="1" y="9" width="6" height="6" rx="1.6"/><rect x="9" y="9" width="6" height="6" rx="1.6"/></svg>App</button>
     <button class="opill" id="oToday"></button>
   </div>
 
@@ -1206,6 +1215,7 @@ body.note-open{overflow:hidden;}
   <div class="sbar">
     <button class="oback" data-go="scHome" aria-label="กลับ"></button>
     <div class="otitle">SELF</div>
+    <button class="oapp" onclick="openPhoneApps()" aria-label="ไปหน้าแอปของมือถือ"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.6"/><rect x="9" y="1" width="6" height="6" rx="1.6"/><rect x="1" y="9" width="6" height="6" rx="1.6"/><rect x="9" y="9" width="6" height="6" rx="1.6"/></svg>App</button>
     <button class="opill" id="sToday"></button>
   </div>
 
@@ -4715,6 +4725,27 @@ function init(){
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
 else init();
+
+/* ---------- โหมด Launcher (แอป Android ที่ห่อหน้านี้ไว้เป็นหน้าโฮม) ---------- */
+function openPhoneApps(){
+  if(window.HomeBridge){ try{ HomeBridge.openPhoneHome(); return; }catch(e){} }
+  toast('ปุ่มนี้ใช้ได้เมื่อเปิดผ่านแอป Launcher บน Android');
+}
+/* ปุ่มย้อนกลับของมือถือ: ปิดแผงที่เปิดอยู่ก่อน แล้วค่อยถอยหน้า */
+window.__launcherBack=function(){
+  const hs=history.state; if(hs&&(hs.imgv||hs.note)){ history.back(); return true; }
+  const open=[...document.querySelectorAll('.show')].filter(el=>/(Bg|sheet)$/i.test(el.id||''));
+  if(open.length){ open.forEach(el=>el.classList.remove('show')); return true; }
+  const cur=document.querySelector('.screen.active');
+  if(!cur||cur.id==='scHome') return false;
+  const back=cur.querySelector('.oback[data-go]');
+  goScreen(back?back.dataset.go:'scHome'); return true;
+};
+/* กดปุ่มโฮมตอนอยู่ในแอปแล้ว = กลับหน้าแรก */
+window.__launcherHome=function(){
+  document.querySelectorAll('.show').forEach(el=>{ if(/(Bg|sheet)$/i.test(el.id||'')) el.classList.remove('show'); });
+  goScreen('scHome'); window.scrollTo(0,0);
+};
 </script>
 </body>
 </html>

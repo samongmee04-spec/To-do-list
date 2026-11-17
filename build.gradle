@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.samong.myhome'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.samong.myhome'
+        minSdk 29
+        targetSdk 34
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('myhome.jks')
+            storePassword 'myhome123'
+            keyAlias 'myhome'
+            keyPassword 'myhome123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
