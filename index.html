@@ -517,6 +517,10 @@ html.inLauncher .oapp{display:inline-flex}
   transition:transform .12s ease}
 #voiceFab:active{transform:scale(.93)}
 #voiceFab svg{width:24px;height:24px;filter:drop-shadow(0 1px 2px rgba(38,50,78,.45))}
+#voiceFab{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#voiceFab.hold{transform:scale(.9);box-shadow:0 5px 14px rgba(10,22,46,.3),0 0 0 6px rgba(255,170,80,.55)}
+#voiceFab.armed{transform:scale(1.08);background:linear-gradient(180deg,#f2b36b 0%,#f4c086 100%);
+  box-shadow:0 5px 14px rgba(10,22,46,.3),0 0 0 7px rgba(255,170,80,.45)}
 #scHome{padding-bottom:calc(env(safe-area-inset-bottom) + 150px)}
 
 /* ---------- ไฟสถานะซิงก์บนปุ่มเฟือง ---------- */
@@ -1117,7 +1121,7 @@ body.note-open{overflow:hidden;}
     </div>
   </div>
 
-  <button id="voiceFab" onclick="location.href='quick.html'" aria-label="จดด่วน"></button>
+  <button id="voiceFab" aria-label="แตะ = จดด่วนด้วยเสียง · กดค้าง = พิมพ์โน้ตใหม่"></button>
 </main>
 
 <!-- ==================== หน้า OFFICE / SELF (รอข้อ 2–3) ==================== -->
@@ -4038,6 +4042,55 @@ function moveTask(id, group){
   const fab = document.getElementById('voiceFab');
   if(fab) fab.innerHTML = MIC_SVG;
 })();
+/* ปุ่มไมค์หน้าแรก: แตะ = ไปหน้าจดด่วนด้วยเสียง · กดค้าง 0.5 วิ (สั่นเบาๆ) แล้วปล่อย = เปิดโน้ตใหม่พร้อมพิมพ์ */
+(function wireFabHold(){
+  const fab = document.getElementById('voiceFab');
+  if(!fab) return;
+  const PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  let timer = null, armed = false, down = false, sx = 0, sy = 0;
+  function reset(){
+    clearTimeout(timer); timer = null; armed = false; down = false;
+    fab.classList.remove('hold', 'armed');
+    fab.innerHTML = MIC_SVG;
+  }
+  fab.addEventListener('pointerdown', e=>{
+    down = true; armed = false; sx = e.clientX; sy = e.clientY;
+    fab.classList.add('hold');
+    timer = setTimeout(()=>{
+      armed = true;
+      fab.classList.add('armed');
+      fab.innerHTML = PENCIL;
+      try{ navigator.vibrate && navigator.vibrate(30); }catch(err){}
+    }, 500);
+  });
+  fab.addEventListener('pointermove', e=>{
+    if(down && !armed && Math.hypot(e.clientX - sx, e.clientY - sy) > 14) reset();
+  });
+  fab.addEventListener('pointerup', e=>{
+    if(!down) return;
+    const wasArmed = armed;
+    reset();
+    e.preventDefault();
+    if(wasArmed) quickTypeNote();
+    else location.href = 'quick.html';
+  });
+  fab.addEventListener('pointercancel', reset);
+  fab.addEventListener('contextmenu', e=> e.preventDefault());
+})();
+function quickTypeNote(){
+  const d = new Date();
+  const title = 'จดด่วน ' + d.toLocaleDateString('th-TH', {day:'numeric', month:'short'}) + ' ' +
+    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const notes = loadNotes();
+  const n = {id:newId(), title, html:'', hidden:false, updatedAt:Date.now()};
+  notes.push(n);
+  saveNotes(notes);
+  renderNotes();
+  pushNoteToFirebase(n);
+  openNote(n.id);
+  const ed = document.querySelector('#noteView .note-editor');
+  if(ed){ try{ ed.focus(); }catch(e){} }   // เรียกตอนปล่อยนิ้ว เพื่อให้คีย์บอร์ดเด้งขึ้น
+}
 /* ---------- Due date/time + one reminder, handed to the phone's calendar ---------- */
 const REMIND_OPTIONS = [
   {v:-1,   label:'ไม่เตือน'},
