@@ -1717,6 +1717,26 @@ const CHAR_SVG = `<svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg">
 </svg>`;
 
 /* ---------- ไอคอนจริงจากชีตที่ผู้ใช้ส่งมา (ถ้าโหลดไม่ขึ้นใช้ SVG สำรองด้านบน) ---------- */
+/* โหลดรูปแบบลองซ้ำ: ถ้าเน็ตสะดุดตอนเปิดแอป จะลองใหม่เองจนกว่าจะได้ (แอปหน้าโฮมเปิดค้างไว้ตลอด จึงต้องมีตัวนี้) */
+const IMG_PENDING = {};
+function loadImgRetry(src, onok, tries){
+  tries = tries || 0;
+  const im = new Image();
+  im.onload = ()=>{
+    if(im.naturalWidth < 2){ im.onerror(); return; }
+    delete IMG_PENDING[src];
+    onok(im);
+  };
+  im.onerror = ()=>{
+    IMG_PENDING[src] = ()=> loadImgRetry(src, onok, 0);
+    if(tries < 6) setTimeout(()=>{ if(IMG_PENDING[src]) loadImgRetry(src, onok, tries + 1); }, [1500,3000,6000,12000,30000,60000][tries]);
+  };
+  im.src = src + (tries ? (src.includes('?') ? '&' : '?') + 'r=' + Date.now() : '');
+}
+function retryPendingImgs(){ Object.keys(IMG_PENDING).forEach(k=>{ const f = IMG_PENDING[k]; delete IMG_PENDING[k]; f(); }); }
+window.addEventListener('online', retryPendingImgs);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) retryPendingImgs(); });
+
 const ICON_IMG  = {temp:'ic-temp', rain:'ic-rain', fortune:'ic-fortune', bible:'ic-bible',
                    food:'ic-food', pm:'ic-pm', gear:'ic-gear'};
 const ICON_SLOT = {temp:'#icTemp', rain:'#icRain', fortune:'#icFortune', bible:'#icBible',
@@ -1724,14 +1744,12 @@ const ICON_SLOT = {temp:'#icTemp', rain:'#icRain', fortune:'#icFortune', bible:'
 const ICONHTML  = Object.assign({}, ICONS);
 function loadIconImgs(){
   Object.keys(ICON_IMG).forEach(k=>{
-    const src='assets/'+ICON_IMG[k]+'.webp', im=new Image();
-    im.onload=()=>{
-      if(im.naturalWidth<2) return;
-      ICONHTML[k]='<img src="'+src+'" alt="">';
+    const src='assets/'+ICON_IMG[k]+'.webp';
+    loadImgRetry(src, im=>{
+      ICONHTML[k]='<img src="'+im.src+'" alt="">';
       const el=document.querySelector(ICON_SLOT[k]);
       if(el) el.innerHTML=ICONHTML[k];
-    };
-    im.src=src;
+    });
   });
 }
 
@@ -1743,9 +1761,7 @@ const FOOD_KEYS=['soup','burger','plate','rice','sushi','hotpot','skewer','pan',
 const FOOD_OK={};
 function loadFoodIcons(){
   FOOD_KEYS.forEach(k=>{
-    const im=new Image();
-    im.onload=()=>{ if(im.naturalWidth>1) FOOD_OK[k]=1; };
-    im.src='assets/fd-'+k+'.webp';
+    loadImgRetry('assets/fd-'+k+'.webp', ()=>{ FOOD_OK[k]=1; });
   });
 }
 const FOOD_RULES=[
@@ -1855,13 +1871,10 @@ function tinted(img,color,amount){
 }
 function loadArt(){
   [['sun','assets/sun.webp'],['moon','assets/moon.webp'],['cloud','assets/cloud.webp'],['bird','assets/bird.webp']].forEach(([k,src])=>{
-    const im=new Image();
-    im.onload=()=>{
-      if(im.naturalWidth<2) return;
+    loadImgRetry(src, im=>{
       ART[k]=im; ART.r[k]=im.naturalHeight/im.naturalWidth;
       if(k==='cloud'){ try{ ART.cloudNight=tinted(im,'#27324e',.78); }catch(e){} }
-    };
-    im.src=src;
+    });
   });
 }
 
@@ -4740,8 +4753,17 @@ function imgOrFallback(img,fbEl,svg){
   const ok=()=>{ img.style.display='block'; fbEl.style.display='none'; };
   const bad=()=>{ img.style.display='none'; fbEl.style.display=''; };
   img.addEventListener('load',()=>{ if(img.naturalWidth>1) ok(); });
-  img.addEventListener('error',bad);
-  if(img.complete){ img.naturalWidth>1 ? ok() : bad(); }
+  let tries=0;
+  const fail=()=>{
+    bad();
+    const base=img.getAttribute('src').split('?')[0];
+    const again=()=>{ img.src=base+'?r='+Date.now(); };
+    if(tries<6) setTimeout(again,[1500,3000,6000,12000,30000,60000][tries++]);
+    IMG_PENDING[base]=again;
+  };
+  img.addEventListener('error',fail);
+  img.addEventListener('load',()=>{ delete IMG_PENDING[(img.getAttribute('src')||'').split('?')[0]]; });
+  if(img.complete){ img.naturalWidth>1 ? ok() : fail(); }
 }
 /* ทุกส่วนแยกกัน ถ้าส่วนหนึ่งพังส่วนอื่นยังทำงานต่อได้ */
 function safe(tag,fn){ try{ fn(); }catch(e){ console.error('['+tag+']',e); } }
