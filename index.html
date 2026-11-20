@@ -5051,6 +5051,9 @@ function init(){
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
 else init();
+/* เปิดจากลิงก์ภายนอก (เช่น ปุ่มกลับจาก Visual Board): #self → หน้า Self ที่มีกระดาน Buying / Important */
+window.addEventListener('load',()=>{ if(location.hash==='#self') goScreen('scSelf'); });
+window.addEventListener('hashchange',()=>{ if(location.hash==='#self') goScreen('scSelf'); });
 
 /* ---------- โหมด Launcher (แอป Android ที่ห่อหน้านี้ไว้เป็นหน้าโฮม) ---------- */
 function openPhoneApps(){
