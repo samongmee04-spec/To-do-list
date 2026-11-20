@@ -311,6 +311,25 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
 #oDel{background:#f6e2e2;color:#a9433f;flex:0 0 72px}
 #oSave{background:#1c1e22;color:#fff}
 
+/* ---- Office: บอร์ดใหญ่ขึ้น + เต็มจอเมื่อเปิดบนคอม ---- */
+#scOffice{padding-bottom:calc(env(safe-area-inset-bottom) + 92px)}
+#stickyArea{min-height:clamp(340px,50vh,600px)}
+.oside{flex:none}
+@media (min-width:520px){
+  /* จอกว้างกว่ามือถือ (รวมหน้าต่าง Chrome ที่ซูมอยู่): เต็มจอ ไม่เห็นท้องฟ้าด้านข้าง */
+  #scOffice{max-width:none;margin:0;padding:18px 26px 96px}
+}
+@media (min-width:820px){
+  /* คอมพิวเตอร์: บอร์ดซ้ายเต็มความสูง ลิสต์งานขวา */
+  #scOffice{overflow:hidden}
+  #scOffice.active{display:grid;grid-template-columns:minmax(0,1fr) 400px;
+    grid-template-rows:auto minmax(0,1fr);column-gap:22px;align-items:stretch}
+  #scOffice .obar{grid-column:1/-1;margin-bottom:14px}
+  #scOffice .board{grid-column:1;grid-row:2;display:flex;flex-direction:column;margin-bottom:0;min-height:0}
+  #scOffice #stickyArea{flex:1 1 auto;min-height:0}
+  #scOffice .oside{grid-column:2;grid-row:2;overflow-y:auto;min-height:0;scrollbar-width:thin;padding-right:2px}
+}
+
 /* ============================================================
    หน้า SELF — กระดานบนพื้นน้ำตาลเข้ม
    ============================================================ */
@@ -336,7 +355,7 @@ html.inLauncher .oapp{display:inline-flex}
 .selfStage::before,.selfStage::after{content:"";position:absolute;left:0;right:0;height:50%}
 .selfStage::before{top:0;background:url(assets/self-top.webp) center top/100% 100% no-repeat,#dbaea6}
 .selfStage::after{bottom:0;background:url(assets/self-bot.webp) center bottom/100% 100% no-repeat,#fcb278}
-.selfImg{position:relative;z-index:1;width:100%;max-height:100%;aspect-ratio:1024/1536}
+.selfImg{position:relative;z-index:1;width:100%;max-height:100%;aspect-ratio:1024/1536;container-type:inline-size}
 .selfBg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
 .hs{position:absolute;border:0;background:transparent;border-radius:14px;cursor:pointer;padding:0;
   -webkit-tap-highlight-color:transparent;transition:background .12s ease,transform .12s ease}
@@ -344,8 +363,32 @@ html.inLauncher .oapp{display:inline-flex}
 
 /* รายการบนกระดาน */
 .bdList{position:absolute;overflow:hidden;display:flex;flex-direction:column;gap:3px;
-  font-size:clamp(10px,2.7vw,13px);line-height:1.38;cursor:pointer}
+  font-size:clamp(10px,2.7vw,13px);font-size:max(10px,2.55cqw);line-height:1.32;cursor:pointer}
 .bdList .bi{display:flex;gap:4px;align-items:flex-start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bdList .bi .bt{min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.bdList .bi small{font-size:.8em;opacity:.68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ชื่อหัวข้อบนกระดาน — ย่อให้เล็ก วางมุมซ้ายบนข้างหมุด เหลือที่ให้รายการเยอะขึ้น */
+.bdLab{position:absolute;pointer-events:none;font-family:'Nunito',sans-serif;font-weight:800;
+  font-size:11px;font-size:max(9.5px,2.6cqw);letter-spacing:.5px;line-height:1.1;padding-bottom:.12em;
+  border-bottom:2px solid currentColor}
+.bdLab.dark{color:#f4f2ee;border-bottom-color:#ffd54a}
+.bdLab.light{color:#2c2622;border-bottom-color:#e0463c}
+/* ปุ่ม Visual Board ตรงผนังเหนือกระดาน */
+.vbBtn{position:absolute;z-index:3;left:50%;top:2.6%;transform:translateX(-50%);
+  display:inline-flex;align-items:center;gap:.4em;height:max(24px,5.4cqw);padding:0 max(11px,2.8cqw) 0 max(13px,3.2cqw);
+  border:0;border-radius:99px;cursor:pointer;white-space:nowrap;
+  font-family:'Nunito',sans-serif;font-weight:800;letter-spacing:.7px;font-size:max(10.5px,2.9cqw);
+  color:#fff;background:#2a2c31;box-shadow:0 4px 12px rgba(40,22,10,.38),0 1px 0 rgba(255,255,255,.18) inset;
+  transition:transform .12s ease}
+.vbBtn svg{width:1.15em;height:1.15em;flex:none}
+.vbBtn:active{transform:translateX(-50%) scale(.95)}
+#scVisual{background:#3a2920;color:#f2e7dd;
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 86px)}
+.vbPage{flex:1 1 auto;min-height:0;display:grid;place-items:center;border-radius:22px;
+  border:1.5px dashed rgba(242,231,221,.25);background:rgba(255,255,255,.04)}
+.vbSoon{display:flex;flex-direction:column;gap:8px;text-align:center;color:#cdbcab}
+.vbSoon b{font-family:'Nunito',sans-serif;letter-spacing:2.4px;font-size:15px;color:#f2e7dd}
+.vbSoon span{font-size:12.5px}
 .bdList .bi span{overflow:hidden;text-overflow:ellipsis}
 .bdList.dark{color:#f4f2ee}
 .bdList.dark .bi i{color:#ffe08a;font-style:normal}
@@ -386,6 +429,39 @@ html.inLauncher .oapp{display:inline-flex}
   height:100%;max-height:760px;display:flex;flex-direction:column;
   box-shadow:0 22px 50px rgba(0,0,0,.45)}
 .bsBox .bsList{padding-bottom:6px}
+.brow .bmain{flex:1;min-width:0;cursor:pointer}
+.brow .bmain p{flex:none}
+.brow .bmeta{display:block;margin-top:2px;font-size:11.5px;color:#6b7380;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .bmeta.add{color:#aeb3bb}
+.brow.done .bmeta{opacity:.6}
+/* แผ่นรายละเอียดหัวข้อ */
+#itsheet{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;
+  padding:calc(env(safe-area-inset-top) + 14px) 12px calc(env(safe-area-inset-bottom) + 14px);
+  background:rgba(14,17,22,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#itsheet.show{display:flex}
+.itBox{position:relative;width:100%;max-width:460px;max-height:100%;overflow-y:auto;background:#f4f5f7;border-radius:26px;
+  padding:22px 16px 18px;animation:pop .26s cubic-bezier(.2,1.2,.4,1);box-shadow:0 22px 50px rgba(0,0,0,.45)}
+#itTitle{width:100%;height:46px;border:1px solid #d9dbe0;border-radius:12px;padding:0 12px;margin-bottom:9px;
+  font-family:inherit;font-size:15px;font-weight:700;color:#1c1e22;background:#fff}
+#itText{width:100%;min-height:120px;border:1px solid #d9dbe0;border-radius:12px;padding:11px;resize:vertical;
+  font-family:inherit;font-size:14px;line-height:1.55;color:#3a3f47;background:#fff}
+.itSec{margin:16px 0 8px;font-family:'Nunito',sans-serif;font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#8b919b}
+.itRow{display:flex;gap:9px}
+.itRow label,.itRem{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#6b7380;font-weight:700;flex:1;min-width:0}
+.itRow input,.itRem select{height:40px;border:1px solid #d9dbe0;border-radius:10px;padding:0 9px;font-family:inherit;
+  font-size:14px;background:#fff;color:#1c1e22;width:100%;min-width:0}
+.itRem{margin-top:9px}
+.itBtns2{display:flex;gap:8px;margin-top:12px}
+.itGcal,.itBtns2 button{height:44px;border:0;border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.itGcal{flex:1;background:#2f6fe4;color:#fff}
+.itBtns2 button{flex:0 0 96px;background:#e3e5e9;color:#2b2f36}
+.itHint{margin-top:9px;font-size:10.5px;line-height:1.5;color:#9ba1ab}
+#itsheet .obtns{margin-top:14px}
+#itDel{background:#f6e2e2;color:#a9433f;flex:0 0 64px}
+#itClear{background:#e3e5e9;color:#2b2f36;flex:0 0 88px}
+#itSave{background:#1c1e22;color:#fff}
 
 /* ---------- ควันชา (หน้า SELF) ---------- */
 .steam{position:absolute;z-index:2;pointer-events:none}
@@ -1150,6 +1226,7 @@ body.note-open{overflow:hidden;}
     </div>
   </div>
 
+  <div class="oside">
   <!-- SCHEDULE -->
   <div class="sect" id="sec-schedule">
     <button class="shead" data-sec="schedule">
@@ -1195,6 +1272,7 @@ body.note-open{overflow:hidden;}
       <div id="list-wait"></div>
     </div>
   </div>
+  </div>
 </section>
 
 <!-- แผ่นรายละเอียดงาน -->
@@ -1227,8 +1305,10 @@ body.note-open{overflow:hidden;}
     <div class="steam pot" style="left:11.6%;top:69.2%;width:6.8%;height:10%"><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg><svg viewBox="0 0 20 60"><path d="M10 58 C2 48 18 40 10 30 C2 20 18 12 10 2"/></svg></div>
 
     <!-- รายการบนกระดาน -->
-    <div class="bdList dark"  id="listBuying"    style="left:16.5%;top:18.5%;width:35.5%;height:23%"></div>
-    <div class="bdList light" id="listImportant" style="left:57.5%;top:18.5%;width:36%;height:23%"></div>
+    <div class="bdLab dark"  style="left:20.6%;top:11.3%">Buying</div>
+    <div class="bdLab light" style="left:60.8%;top:11.3%">Important</div>
+    <div class="bdList dark"  id="listBuying"    style="left:16.2%;top:16.4%;width:35.8%;height:26.2%"></div>
+    <div class="bdList light" id="listImportant" style="left:57.5%;top:16.4%;width:35.8%;height:26.2%"></div>
 
     <!-- ตัวเลขจาก me Pocket -->
     <div class="moneyVal" id="valIncome" style="left:39%;top:45.8%;width:53%;height:4.6%">—</div>
@@ -1244,7 +1324,22 @@ body.note-open{overflow:hidden;}
     <a class="hs" data-link="pocket" data-name="me Pocket"  style="left:26.5%;top:85.5%;width:19.5%;height:7.5%" aria-label="me Pocket"></a>
     <button class="hs" data-hs="note"      style="left:46%;top:84%;width:20.5%;height:9%"      aria-label="สมุดโน้ต"></button>
     <a class="hs" data-link="diary"  data-name="My Diary"   style="left:67%;top:85%;width:17.5%;height:8.5%"    aria-label="My Diary"></a>
+    <button class="vbBtn" id="vbBtn" type="button">Visual Board<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
    </div>
+  </div>
+</section>
+
+<!-- ==================== หน้า VISUAL BOARD (ที่ว่างไว้ รอสั่งงานขั้นต่อไป) ==================== -->
+<section id="scVisual" class="screen">
+  <div class="sbar">
+    <button class="oback" data-go="scSelf" aria-label="กลับ"></button>
+    <div class="otitle">VISUAL BOARD</div>
+  </div>
+  <div class="vbPage">
+    <div class="vbSoon">
+      <b>VISUAL BOARD</b>
+      <span>หน้านี้พร้อมแล้ว รอใส่เนื้อหา</span>
+    </div>
   </div>
 </section>
 
@@ -1326,6 +1421,32 @@ body.note-open{overflow:hidden;}
     </div>
     <div class="bsShow" id="bsShowToggle"><span class="sw on" id="bsSw"></span>แสดงบนบอร์ดเมื่อเพิ่ม</div>
     <div class="bsList" id="bsList"></div>
+  </div>
+</div>
+
+<!-- แผ่นรายละเอียดของแต่ละหัวข้อ (Buying / Important): ชื่อ · รายละเอียด · ตั้งเวลา Google Calendar -->
+<div id="itsheet">
+  <div class="itBox">
+    <button class="mclose" id="itClose" aria-label="ปิด"></button>
+    <div class="bsLab" id="itLab"></div>
+    <input type="text" id="itTitle" placeholder="หัวข้อ">
+    <textarea id="itText" placeholder="รายละเอียดเพิ่มเติม…"></textarea>
+    <div class="itSec">ตั้งเวลา (Google Calendar)</div>
+    <div class="itRow">
+      <label>วันที่<input type="date" id="itDate"></label>
+      <label>เวลา<input type="time" id="itTime"></label>
+    </div>
+    <label class="itRem">เตือนล่วงหน้า<select id="itRemind"></select></label>
+    <div class="itBtns2">
+      <a class="itGcal" id="itGcal" target="_blank" rel="noopener noreferrer">📅 เพิ่มลง Google Calendar</a>
+      <button type="button" id="itIcs">ไฟล์ .ics</button>
+    </div>
+    <div class="itHint">กด “เพิ่มลง Google Calendar” แล้วกดบันทึกในหน้า Calendar อีกครั้ง · ระดับเตือนล่วงหน้าใช้กับไฟล์ .ics (ใน Google Calendar ให้ตั้งเพิ่มที่ปุ่ม Add notification)</div>
+    <div class="obtns">
+      <button id="itDel">ลบ</button>
+      <button id="itClear">ล้างเวลา</button>
+      <button id="itSave">บันทึก</button>
+    </div>
   </div>
 </div>
 
@@ -3025,6 +3146,14 @@ const BOARDS={buying:{label:'BUYING · รายการที่ต้อง�
 let bsList=null, bsShowNew=true;
 const selfItems=kind=>loadTasks().filter(t=>t.group===BOARDS[kind].group&&!t.hidden);
 
+/* บรรทัดเล็กใต้ชื่อหัวข้อ: เวลาที่ตั้งไว้ + บรรทัดแรกของรายละเอียด */
+function itMeta(it){
+  const parts=[];
+  if(it.due) parts.push('📅 '+fmtDue(it.due));
+  const d=(it.detail||'').trim().split('\n')[0];
+  if(d) parts.push(d);
+  return parts.join(' · ');
+}
 function renderSelfBoards(){
   [['buying','#listBuying','•'],['important','#listImportant','•']].forEach(([k,sel,bullet])=>{
     const box=$(sel); if(!box) return; box.innerHTML='';
@@ -3033,8 +3162,10 @@ function renderSelfBoards(){
     shown.forEach(it=>{
       const r=document.createElement('div');
       r.className='bi'+(it.status==='done'?' done':'');
-      r.innerHTML='<i>'+bullet+'</i><span></span>';
+      r.innerHTML='<i>'+bullet+'</i><div class="bt"><span></span></div>';
       r.querySelector('span').textContent=it.text;
+      const m=itMeta(it);
+      if(m){ const sm=document.createElement('small'); sm.textContent=m; r.querySelector('.bt').appendChild(sm); }
       box.appendChild(r);
     });
   });
@@ -3057,9 +3188,13 @@ function renderBoardSheet(){
     const row=document.createElement('div');
     row.className='brow'+(done?' done':'');
     row.innerHTML='<button class="tick'+(done?' on':'')+'">'+ICONS.check+'</button>'+
-                  '<p></p><button class="beye'+(!it.offBoard?' on':'')+'" title="แสดงบนบอร์ด">👁</button>'+
+                  '<div class="bmain"><p></p><small class="bmeta"></small></div>'+
+                  '<button class="beye'+(!it.offBoard?' on':'')+'" title="แสดงบนบอร์ด">👁</button>'+
                   '<button class="bdel">✕</button>';
     row.querySelector('p').textContent=it.text;
+    const mt=row.querySelector('.bmeta'), meta=itMeta(it);
+    if(meta) mt.textContent=meta; else { mt.textContent='＋ ใส่รายละเอียด / ตั้งเวลา'; mt.classList.add('add'); }
+    row.querySelector('.bmain').onclick=()=>openSelfItem(it.id);
     row.querySelector('.tick').onclick=()=>toggleTask(it.id);
     row.querySelector('.beye').onclick=()=>{
       if(it.offBoard) updateTask(it.id,{},['offBoard']); else updateTask(it.id,{offBoard:true});
@@ -3075,6 +3210,77 @@ function addBoardItem(){
   if(!bsShowNew) task.offBoard=true;
   const all=loadTasks(); all.push(task); saveTasks(all);
   inp.value=''; renderTasks(); pushTaskToFirebase(task);
+}
+
+/* ---------- แผ่นรายละเอียดหัวข้อ: รายละเอียด + ตั้งเวลา Google Calendar ---------- */
+let itId=null;
+const itPad=n=>String(n).padStart(2,'0');
+function itRead(){
+  return {text:$('#itTitle').value.trim(), detail:$('#itText').value.trim(),
+          date:$('#itDate').value, time:$('#itTime').value, remind:parseInt($('#itRemind').value,10)};
+}
+function refreshItGcal(){
+  const v=itRead(), a=$('#itGcal');
+  a.href=(v.date&&v.time)?gcalUrl({text:v.text||'(ไม่มีชื่อ)',detail:v.detail,due:v.date+'T'+v.time}):'#';
+}
+function openSelfItem(id){
+  const it=loadTasks().find(x=>x.id===id); if(!it) return;
+  itId=id;
+  $('#itLab').textContent=(it.group==='important'?'IMPORTANT':'BUYING')+' · รายละเอียด';
+  $('#itTitle').value=it.text||'';
+  $('#itText').value=it.detail||'';
+  const d=parseDue(it.due);
+  $('#itDate').value=d?d.getFullYear()+'-'+itPad(d.getMonth()+1)+'-'+itPad(d.getDate()):'';
+  $('#itTime').value=d?itPad(d.getHours())+':'+itPad(d.getMinutes()):'';
+  const sel=$('#itRemind');
+  sel.innerHTML=REMIND_OPTIONS.map(o=>'<option value="'+o.v+'">'+o.label+'</option>').join('');
+  sel.value=String(typeof it.remind==='number'?it.remind:parseInt(localStorage.getItem('jd_remind_default')||'30',10));
+  refreshItGcal();
+  $('#itsheet').classList.add('show');
+}
+function closeSelfItem(){ $('#itsheet').classList.remove('show'); itId=null; }
+/* บันทึกเฉพาะช่องที่เปลี่ยน (ซิงก์ผ่าน updateTask) — คืนค่างานที่บันทึกแล้ว หรือ null ถ้าข้อมูลไม่ครบ */
+function itSave(){
+  const it=loadTasks().find(x=>x.id===itId); if(!it) return null;
+  const v=itRead();
+  if(!!v.date!==!!v.time){ toast('ใส่ทั้งวันที่และเวลา (หรือเว้นว่างทั้งคู่)'); return null; }
+  const ch={text:v.text||it.text}, rm=[];
+  if(v.detail) ch.detail=v.detail; else rm.push('detail');
+  if(v.date&&v.time){
+    ch.due=v.date+'T'+v.time; ch.remind=v.remind;
+    if(v.remind>=0) localStorage.setItem('jd_remind_default',String(v.remind));
+  } else rm.push('due','remind');
+  return updateTask(itId,ch,rm);
+}
+function bindSelfItem(){
+  $('#itClose').innerHTML=ICONS.close;
+  $('#itClose').onclick=closeSelfItem;
+  $('#itsheet').onclick=e=>{ if(e.target.id==='itsheet') closeSelfItem(); };
+  ['#itTitle','#itText','#itDate','#itTime','#itRemind'].forEach(s=>{
+    $(s).addEventListener('input',refreshItGcal); $(s).addEventListener('change',refreshItGcal);
+  });
+  $('#itSave').onclick=()=>{ if(itSave()){ closeSelfItem(); toast('บันทึกแล้ว'); } };
+  $('#itDel').onclick=()=>{ if(!itId) return; deleteTask(itId); closeSelfItem(); };
+  $('#itClear').onclick=()=>{
+    if(!itId) return;
+    updateTask(itId,{},['due','remind']);
+    $('#itDate').value=''; $('#itTime').value=''; refreshItGcal(); toast('ล้างเวลาแล้ว');
+  };
+  $('#itGcal').addEventListener('click',e=>{
+    const v=itRead();
+    if(!v.date||!v.time){ e.preventDefault(); toast('ใส่วันที่และเวลาก่อน แล้วกด Google Calendar'); return; }
+    const t=itSave(); if(!t){ e.preventDefault(); return; }
+    $('#itGcal').href=gcalUrl(t); toast('บันทึกแล้ว — กำลังเปิด Google Calendar');
+  });
+  $('#itIcs').onclick=()=>{
+    const v=itRead();
+    if(!v.date||!v.time) return toast('ใส่วันที่และเวลาก่อน');
+    const t=itSave(); if(!t) return;
+    const url=URL.createObjectURL(new Blob([buildIcs(t)],{type:'text/calendar;charset=utf-8'}));
+    const a=document.createElement('a'); a.href=url; a.download='reminder.ics';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),8000);
+    toast('ดาวน์โหลดแล้ว — เปิดไฟล์เพื่อเพิ่มลงปฏิทิน');
+  };
 }
 
 /* ---------- ปุ่มบนภาพ ---------- */
@@ -3114,6 +3320,7 @@ function hsTap(kind){
   if(kind==='office') return goScreen('scOffice');
   if(kind==='dart')   return goScreen('scTask');
   if(kind==='note')   return goScreen('scNote');
+  if(kind==='visual') return goScreen('scVisual');
 }
 function enterSelf(){
   renderSelfBoards(); startPocket(); renderPocket();
@@ -3128,6 +3335,8 @@ function bindSelf(){
   $('#bsClose').onclick=()=>{ $('#bsheet').classList.remove('show'); bsList=null; };
   $('#bsheet').onclick=e=>{ if(e.target.id==='bsheet'){ $('#bsheet').classList.remove('show'); bsList=null; } };
   $('#bsAddBtn').onclick=addBoardItem;
+  $('#vbBtn').onclick=()=>hsTap('visual');
+  bindSelfItem();
   $('#bsInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addBoardItem(); });
   $('#bsShowToggle').onclick=()=>{ bsShowNew=!bsShowNew; $('#bsSw').classList.toggle('on',bsShowNew); };
   $('#pkClose').innerHTML=ICONS.close;
@@ -4213,7 +4422,7 @@ function buildIcs(task){
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SamutJot//TH','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
     'UID:' + task.id + '@samutjot', 'DTSTAMP:' + icsStamp(new Date()),
     'DTSTART:' + icsStamp(start), 'DTEND:' + icsStamp(end),
-    'SUMMARY:' + icsEsc(task.text), 'DESCRIPTION:' + icsEsc('จากสมุดจดของฉัน')];
+    'SUMMARY:' + icsEsc(task.text), 'DESCRIPTION:' + icsEsc((task.detail ? task.detail + '\n\n' : '') + 'จากสมุดจดของฉัน')];
   if(typeof task.remind === 'number' && task.remind >= 0){
     lines.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:' + icsEsc(task.text),'TRIGGER:' + icsTrigger(task.remind),'END:VALARM');
   }
@@ -4223,7 +4432,7 @@ function buildIcs(task){
 function gcalUrl(task){
   const start = parseDue(task.due), end = new Date(start.getTime() + 30*60000);
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(task.text) +
-    '&dates=' + icsStamp(start) + '/' + icsStamp(end) + '&details=' + encodeURIComponent('จากสมุดจดของฉัน');
+    '&dates=' + icsStamp(start) + '/' + icsStamp(end) + '&details=' + encodeURIComponent((task.detail ? task.detail + '\n\n' : '') + 'จากสมุดจดของฉัน');
 }
 function refreshGcal(){
   const a = document.getElementById('dueGcal');
