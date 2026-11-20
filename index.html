@@ -3358,7 +3358,7 @@ function hsTap(kind){
   if(kind==='office') return goScreen('scOffice');
   if(kind==='dart')   return goScreen('scTask');
   if(kind==='note')   return goScreen('scNote');
-  if(kind==='visual') return goScreen('scVisual');
+  if(kind==='visual') return location.href='visual.html';
 }
 function enterSelf(){
   renderSelfBoards(); startPocket(); renderPocket();
