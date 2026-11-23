@@ -383,13 +383,10 @@ html.inLauncher .oapp{display:inline-flex}
 .bdLab.dark{color:#f4f2ee;border-bottom-color:#ffd54a}
 .bdLab.light{color:#2c2622;border-bottom-color:#e0463c}
 /* ปุ่ม Visual Board ตรงผนังเหนือกระดาน */
-.vbBtn{position:absolute;z-index:3;left:50%;top:2.6%;transform:translateX(-50%);
-  display:inline-flex;align-items:center;gap:.4em;height:max(24px,5.4cqw);padding:0 max(11px,2.8cqw) 0 max(13px,3.2cqw);
-  border:0;border-radius:99px;cursor:pointer;white-space:nowrap;
-  font-family:'Nunito',sans-serif;font-weight:800;letter-spacing:.7px;font-size:max(10.5px,2.9cqw);
-  color:#fff;background:#2a2c31;box-shadow:0 4px 12px rgba(40,22,10,.38),0 1px 0 rgba(255,255,255,.18) inset;
-  transition:transform .12s ease}
-.vbBtn svg{width:1.15em;height:1.15em;flex:none}
+.vbBtn{position:absolute;z-index:3;left:50%;top:1.4%;transform:translateX(-50%);
+  width:32cqw;min-width:150px;aspect-ratio:900/255;padding:0;border:0;background:transparent url(assets/btn-visual.webp) center/100% 100% no-repeat;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  filter:drop-shadow(0 4px 6px rgba(40,22,10,.35));transition:transform .12s ease}
 .vbBtn:active{transform:translateX(-50%) scale(.95)}
 #scVisual{background:#3a2920;color:#f2e7dd;
   padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 86px)}
@@ -1339,7 +1336,7 @@ body.note-open{overflow:hidden;}
     <a class="hs" data-link="pocket" data-name="me Pocket"  style="left:26.5%;top:85.5%;width:19.5%;height:7.5%" aria-label="me Pocket"></a>
     <button class="hs" data-hs="note"      style="left:46%;top:84%;width:20.5%;height:9%"      aria-label="สมุดโน้ต"></button>
     <a class="hs" data-link="diary"  data-name="My Diary"   style="left:67%;top:85%;width:17.5%;height:8.5%"    aria-label="My Diary"></a>
-    <button class="vbBtn" id="vbBtn" type="button">Visual Board<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="vbBtn" id="vbBtn" type="button" aria-label="Visual Board"></button>
    </div>
   </div>
 </section>
