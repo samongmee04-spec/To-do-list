@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="launcher-shim.js"></script>
+<script src="char-rig.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -95,6 +96,14 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
   transform-origin:center bottom;will-change:transform;z-index:3}
 .charbox img{width:100%;height:100%;object-fit:contain;display:none}
 .charbox svg{width:100%;height:100%}
+/* ตัวละครแยกชิ้น (เปิดเมื่อรูป ch-*.webp โหลดครบ ไม่งั้นใช้ char.webp เดิม) + พื้นที่แตะ */
+.charbox.rigon>img,.charbox.rigon>#charFb{display:none!important}
+.charhit{position:absolute;left:-45%;right:-45%;top:-8%;bottom:0;pointer-events:auto;touch-action:none;
+  cursor:grab;z-index:6;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}
+.charhit:active{cursor:grabbing}
+.charbubble{position:absolute;left:0;top:0;z-index:7;padding:5px 11px;border-radius:13px;background:#fff;color:#243049;
+  font:700 12.5px/1.2 'Noto Sans Thai','Nunito',sans-serif;white-space:nowrap;opacity:0;pointer-events:none;
+  transition:opacity .2s;box-shadow:0 4px 12px rgba(10,22,46,.28);will-change:transform}
 .charshadow{position:absolute;bottom:0;left:0;width:9.8%;height:2.7%;pointer-events:none;z-index:2;
   transform-origin:center center;will-change:transform,opacity;
   background:radial-gradient(50% 50% at 50% 50%,rgba(38,58,90,.34) 0%,rgba(38,58,90,0) 70%)}
@@ -1167,7 +1176,9 @@ body.note-open{overflow:hidden;}
         <div class="charbox" id="charBox">
           <img id="charImg" src="assets/char.webp" alt="">
           <div id="charFb"></div>
+          <div class="charhit" id="charHit"></div>
         </div>
+        <div class="charbubble" id="charBubble"></div>
       </div>
     </div>
   </div>
@@ -2176,15 +2187,19 @@ function flashNow(){
 /* ============================================================
    ตัวละครเดินเอง
    ============================================================ */
-const charBox=$('#charBox'), charShadow=$('#charShadow');
+const charBox=$('#charBox'), charShadow=$('#charShadow'), charHit=$('#charHit'), charBubble=$('#charBubble');
 const CH={
   x:.30,        /* ตำแหน่ง 0–1 ของกล่องบ้าน */
   dir:1,        /* ทิศที่อยากไป */
   lean:1,       /* เอนตัวตามทิศที่เดิน ไล่ตาม dir แบบนุ่ม ๆ */
   go:0,         /* 0 = หยุด, 1 = เดินเต็มสปีด — ไล่ขึ้นลงทำให้ออกตัว/หยุดนุ่ม */
   v:.062,       /* ความเร็ว (สัดส่วนกล่องต่อวินาที) */
-  pause:0, phase:0
+  pause:0, phase:0,
+  /* โต้ตอบ: walk | hold (แตะค้าง) | jump (แตะ) | drag (ลาก) | fall | land */
+  mode:'walk', mt:0, lift:0, vy:0, squash:0, bounced:false,
+  dragX:.3, dragLift:0, lastX:.3, dvx:0, swing:0, swingV:0, ptrDx:0, bubT:0
 };
+let CHRIG=null;
 /* ขอบหน้าของแท่นบ้าน วัดจากไฟล์ house.png — ให้เท้าเดินตามเส้นนี้ */
 const GROUND=[[.15,.817],[.20,.838],[.25,.853],[.30,.868],[.35,.882],[.40,.897],
               [.45,.909],[.50,.914],[.55,.912],[.60,.901],[.65,.887],[.70,.872]];
@@ -2203,16 +2218,47 @@ function groundAt(x){
 function walkChar(dt){
   const wrap=charBox.parentElement; if(!wrap) return;
   const wW=wrap.clientWidth||300, wH=wrap.clientHeight||220;
+  const H=charBox.offsetHeight||60, G=H*10;
+  const T=performance.now()/1000;
+  const rigOn=!!(CHRIG && CHRIG.on);
+  CH.mt+=dt;
 
-  /* ออกตัวและหยุดแบบค่อยเป็นค่อยไป ไม่กระตุก */
-  if(CH.pause>0) CH.pause-=dt;
-  const want = CH.pause>0 ? 0 : 1;
-  CH.go += (want-CH.go)*Math.min(1,dt*3.5);
+  if(CH.mode==='drag'){
+    /* ถูกยก: ตามนิ้ว ขาห้อยแกว่งตามความเร็วนิ้ว */
+    CH.x += (CH.dragX-CH.x)*Math.min(1,dt*16);
+    CH.lift += (CH.dragLift-CH.lift)*Math.min(1,dt*16);
+    const vx=(CH.x-CH.lastX)*wW/Math.max(dt,.001); CH.lastX=CH.x;
+    CH.dvx += (vx-CH.dvx)*Math.min(1,dt*10);
+    const tg=Math.max(-40,Math.min(40,-CH.dvx*.12));
+    CH.swingV += ((tg-CH.swing)*60-CH.swingV*7)*dt; CH.swing+=CH.swingV*dt;
+    CH.go += (0-CH.go)*Math.min(1,dt*10);
+  }else{
+    if(CH.mode==='jump'||CH.mode==='fall'){
+      CH.vy -= G*dt; CH.lift += CH.vy*dt;
+      if(CH.mode==='jump') CH.squash=Math.max(0,CH.squash-dt*6);
+      if(CH.lift<=0){
+        CH.lift=0;
+        if(CH.mode==='fall' && !CH.bounced && CH.vy < -H*2.2){ CH.vy=-CH.vy*.32; CH.bounced=true; CH.squash=-.6; }
+        else{ CH.vy=0; CH.squash=-.85; CH.mode='land'; CH.mt=0; CH.bounced=false; }
+      }
+      CH.swingV += ((0-CH.swing)*60-CH.swingV*7)*dt; CH.swing+=CH.swingV*dt;
+    }
+    if(CH.mode==='land'){
+      CH.squash += (0-CH.squash)*Math.min(1,dt*9);
+      if(CH.mt>.32){ CH.squash=0; CH.mode='walk'; }
+    }
+    const air=(CH.mode==='jump'||CH.mode==='fall');
 
-  CH.x += CH.dir*CH.v*CH.go*dt;
-  if(CH.x>.62){ CH.x=.62; CH.dir=-1; CH.pause=rnd(.8,2.2); }
-  if(CH.x<.18){ CH.x=.18; CH.dir=1;  CH.pause=rnd(.8,2.2); }
-  if(CH.pause<=0 && Math.random()<dt*.10) CH.pause=rnd(.9,2.6);
+    /* ออกตัวและหยุดแบบค่อยเป็นค่อยไป ไม่กระตุก */
+    if(CH.pause>0) CH.pause-=dt;
+    const want = (CH.pause>0 || CH.mode==='hold' || air) ? 0 : 1;
+    CH.go += (want-CH.go)*Math.min(1,dt*(air?2:3.5));
+
+    CH.x += CH.dir*CH.v*CH.go*dt;
+    if(CH.x>.62){ CH.x=.62; CH.dir=-1; CH.pause=rnd(.8,2.2); }
+    if(CH.x<.18){ CH.x=.18; CH.dir=1;  CH.pause=rnd(.8,2.2); }
+    if(CH.mode==='walk' && CH.pause<=0 && Math.random()<dt*.10) CH.pause=rnd(.9,2.6);
+  }
 
   /* ไม่พลิกภาพตอนเปลี่ยนทิศ แค่เอนตัวไปทางที่เดินนิดเดียว */
   CH.lean += (CH.dir-CH.lean)*Math.min(1,dt*2.5);
@@ -2221,23 +2267,94 @@ function walkChar(dt){
   CH.phase += dt*CH.go*7.6;
   const step  = Math.sin(CH.phase);
   const lift  = step*step;                      /* 0–1 นุ่มทั้งขึ้นและลง */
-  const y     = -lift*3.0*CH.go;
-  const tilt  = (Math.sin(CH.phase*0.5)*1.8 + CH.lean*1.6)*CH.go;
-  const sq    = Math.sin(CH.phase*2)*0.028*CH.go;
+  /* ถ้าใช้ตัวละครแยกชิ้น ท่าเดินทั้งหมด (เด้ง/เอียง/ย่อ) ให้ตัวนั้นจัดการเอง */
+  const y     = rigOn ? 0 : -lift*3.0*CH.go;
+  const tilt  = rigOn ? 0 : (Math.sin(CH.phase*0.5)*1.8 + CH.lean*1.6)*CH.go;
+  const sq    = rigOn ? 0 : Math.sin(CH.phase*2)*0.028*CH.go;
 
   /* ยกตัวขึ้นให้เท้าอยู่บนขอบแท่นพอดี ตามตำแหน่งที่ยืน */
   const cx = CH.x*wW;
   const base = -(1-groundAt(CH.x))*wH;
 
   charBox.style.transform =
-    `translate3d(${cx.toFixed(2)}px,${(base+y).toFixed(2)}px,0)`+
+    `translate3d(${cx.toFixed(2)}px,${(base+y-CH.lift).toFixed(2)}px,0)`+
     ` rotate(${tilt.toFixed(2)}deg) scale(${(1-sq).toFixed(3)},${(1+sq).toFixed(3)})`;
 
+  if(rigOn) CHRIG.pose({phase:CH.phase,go:CH.go,lean:CH.lean,mode:CH.mode,vy:CH.vy,time:T,
+    swing:CH.swing,dvx:CH.dvx,ptrDx:CH.ptrDx,squash:CH.squash,mt:CH.mt});
+
   if(charShadow){
-    const s=(1-lift*0.22*CH.go).toFixed(3);
+    const air=Math.min(.65,CH.lift/(H*2.2));
+    const s=((1-lift*0.22*CH.go)*(1-air)).toFixed(3);
     charShadow.style.transform=`translate3d(${cx.toFixed(2)}px,${(base+wH*0.013).toFixed(2)}px,0) scale(${s},${s})`;
-    charShadow.style.opacity=(0.95-lift*0.3*CH.go).toFixed(2);
+    charShadow.style.opacity=((0.95-lift*0.3*CH.go)*(1-air*.8)).toFixed(2);
   }
+
+  /* บับเบิลคำพูดเหนือหัว */
+  if(CH.bubT>0){
+    CH.bubT-=dt;
+    const bw=charBubble.offsetWidth||80, bh=charBubble.offsetHeight||24;
+    const topY=wH*(1-.234)+base-CH.lift;
+    charBubble.style.transform=`translate3d(${(cx+wW*.049-bw/2).toFixed(1)}px,${(topY-bh-4).toFixed(1)}px,0)`;
+    if(CH.bubT<=0) charBubble.style.opacity=0;
+  }
+}
+
+/* ----- โต้ตอบกับตัวละคร: แตะ = กระโดดทักทาย · แตะค้าง = หยุด (ปล่อย = เดินหนีนิ้ว) · ลาก = ยกตัวลอย ----- */
+const CHAR_SAY=['สวัสดี!','วันนี้จดงานรึยัง?','ฮึบ! ลุยกัน','เหนื่อยก็พักนะ','มาเล่นกันมั้ย'];
+function charSay(t){ charBubble.textContent=t; charBubble.style.opacity=1; CH.bubT=1.6; }
+function initCharInteract(){
+  const box=$('#houseBox'); if(!box||!charHit) return;
+  const P={down:false,id:null,t0:0,sx:0,sy:0,moved:false,timer:0,offX:0,offY:0};
+  const pt=e=>{ const r=box.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top,w:r.width||1,h:r.height||1}; };
+  const canTouch=()=>CH.mode==='walk'||CH.mode==='land';
+  charHit.addEventListener('pointerdown',e=>{
+    if(P.down) return;
+    P.down=true; P.id=e.pointerId; P.moved=false; P.t0=performance.now();
+    const p=pt(e); P.sx=p.x; P.sy=p.y;
+    try{ charHit.setPointerCapture(e.pointerId); }catch(_){}
+    clearTimeout(P.timer);
+    P.timer=setTimeout(()=>{ if(P.down && !P.moved && canTouch()){ CH.mode='hold'; CH.mt=0; } },260);
+    e.preventDefault();
+  });
+  charHit.addEventListener('pointermove',e=>{
+    if(!P.down||e.pointerId!==P.id) return;
+    const p=pt(e);
+    CH.ptrDx=p.x-CH.x*p.w-charBox.offsetWidth/2;
+    if(!P.moved && Math.hypot(p.x-P.sx,p.y-P.sy)>10){
+      P.moved=true;
+      if(CH.mode!=='drag'){
+        /* เริ่มยก: จำระยะระหว่างนิ้วกับเท้า จะได้ไม่กระโดดมาอยู่ใต้นิ้ว */
+        P.offX=CH.x-p.x/p.w;
+        P.offY=(groundAt(CH.x)*p.h-CH.lift)-p.y;
+        CH.mode='drag'; CH.mt=0; CH.lastX=CH.x; CH.dvx=0; CH.swing=0; CH.swingV=0; CH.vy=0;
+        charSay('ว้าย!');
+      }
+    }
+    if(CH.mode==='drag'){
+      CH.dragX=Math.max(.1,Math.min(.74,p.x/p.w+P.offX));
+      CH.dragLift=Math.max(0,groundAt(CH.dragX)*p.h-(p.y+P.offY));
+    }
+  });
+  const up=e=>{
+    if(!P.down||e.pointerId!==P.id) return;
+    P.down=false; clearTimeout(P.timer);
+    try{ charHit.releasePointerCapture(e.pointerId); }catch(_){}
+    const held=performance.now()-P.t0, p=pt(e);
+    if(CH.mode==='drag'){
+      CH.x=Math.max(.18,Math.min(.62,CH.x));        /* ปล่อยแล้วตกลงบนแท่นเสมอ */
+      CH.vy=0; CH.bounced=false; CH.mode='fall'; CH.mt=0;
+    }else if(CH.mode==='hold'){
+      CH.dir = (p.x/p.w) < CH.x ? 1 : -1;            /* เดินหนีนิ้ว */
+      CH.pause=0; CH.mode='walk'; CH.mt=0;
+    }else if(!P.moved && held<260 && canTouch()){
+      CH.mode='jump'; CH.mt=0; CH.vy=Math.sqrt(2*(charBox.offsetHeight*10)*(charBox.offsetHeight*.55)); CH.squash=1;
+      charSay(CHAR_SAY[(Math.random()*CHAR_SAY.length)|0]);
+    }
+  };
+  charHit.addEventListener('pointerup',up);
+  charHit.addEventListener('pointercancel',up);
+  charHit.addEventListener('contextmenu',e=>e.preventDefault());
 }
 
 /* ============================================================
@@ -5024,7 +5141,9 @@ function init(){
     loadArt();
     imgOrFallback($('#houseImg'),$('#houseFb'),HOUSE_SVG);
     imgOrFallback($('#charImg'),$('#charFb'),CHAR_SVG);
+    if(window.CharRig){ CHRIG=CharRig.init(charBox); }
   });
+  safe('charInteract',initCharInteract);
   safe('bind',()=>{
     document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>openModal(b.dataset.act));
     document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>goScreen(b.dataset.go));
