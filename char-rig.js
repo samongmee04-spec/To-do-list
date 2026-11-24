@@ -32,7 +32,7 @@
     wrapBody.style.cssText = 'position:absolute;inset:0;transform-origin:110px 272px;will-change:transform;';
     const upper = document.createElement('div');
     upper.style.cssText =
-      `position:absolute;inset:0;transform-origin:${UPPER_PIVOT.x}px ${UPPER_PIVOT.y}px;will-change:transform;`;
+      `position:absolute;inset:0;z-index:2;transform-origin:${UPPER_PIVOT.x}px ${UPPER_PIVOT.y}px;will-change:transform;`;
     rigEl.appendChild(wrapBody);
 
     const el = {};
@@ -41,7 +41,7 @@
       const d = document.createElement('div');
       d.style.cssText =
         `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;` +
-        `transform-origin:${p.px}px ${p.py}px;will-change:transform;z-index:${i};` +
+        `transform-origin:${p.px}px ${p.py}px;will-change:transform;z-index:${UPPER.indexOf(k) < 0 ? 0 : i};` +
         `background:center/100% 100% no-repeat url("${opts.base}${k}.webp");`;
       el[k] = d;
     });
@@ -71,8 +71,11 @@
       const s = Math.sin(p.phase), c = Math.cos(p.phase);
       const m = p.mode;
 
-      let legL = s * 27 * amp, legR = -s * 27 * amp;
-      let armL = -s * 30 * amp, armR = s * 30 * amp;
+      /* ก้าวไปทางที่เดิน: ขาสลับหน้า-หลัง (มุมน้อยไม่ให้ไขว้) ยกเท้าตอนก้าวไปข้างหน้า */
+      const ds = cl(p.lean, -1, 1);
+      let legL = -ds * 15 * s * amp, legR = ds * 15 * s * amp;
+      /* แขนแกว่งสลับซ้าย-ขวา: ข้างหนึ่งแกว่งออก อีกข้างอยู่ใกล้ตัว ไม่แกว่งเข้ากลางลำตัวพร้อมกัน */
+      let armL = (13 - 17 * s) * amp, armR = (-13 - 17 * s) * amp;
       let liftL = Math.max(0, c) * 9 * amp, liftR = Math.max(0, -c) * 9 * amp;
       let bob = -Math.abs(c) * 4 * amp;
       let tilt = s * 1.2 * amp + p.lean * 2.5 * amp;
