@@ -1123,6 +1123,17 @@ body.note-open{overflow:hidden;}
 .lg .sync-state.wait{color:#B08A2E;}
 .lg .sync-state.off{color:#B4533A;}
 .lg .nv-imgbar button{border:none;border-radius:11px;padding:7px 10px;background:#f1f2f4;color:#1c1e22;font-family:'Prompt',sans-serif;font-size:.78rem;cursor:pointer;}
+
+.stgbtns{position:absolute;top:2%;right:13%;display:flex;gap:8px;z-index:6}
+.stgbtns button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(20,28,56,.45);color:#fff;font-size:20px;line-height:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.25);-webkit-tap-highlight-color:transparent;padding:0}
+.stgbtns button:active{transform:scale(.92)}
+.stgbtns button.on{background:rgba(255,200,60,.55)}
+#gameLayer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden}
+.gitem{position:absolute;left:0;top:0;font-size:34px;line-height:1;padding:10px;margin:-10px;pointer-events:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;will-change:transform;filter:drop-shadow(0 0 6px rgba(255,235,150,.7))}
+.gitem.pop{transition:transform .25s ease-out,opacity .25s;opacity:0;pointer-events:none}
+.gplus{position:absolute;font:700 18px 'Prompt',sans-serif;color:#ffe27a;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;animation:gplus .7s ease-out forwards}
+@keyframes gplus{to{transform:translateY(-34px);opacity:0}}
+#gameHud{position:absolute;top:118px;left:14px;padding:6px 14px;border-radius:999px;background:rgba(15,22,48,.62);color:#fff;font:600 .9rem 'Prompt',sans-serif;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);white-space:nowrap;display:none}
 </style>
 </head>
 <body>
@@ -1179,6 +1190,7 @@ body.note-open{overflow:hidden;}
           <div class="charhit" id="charHit"></div>
         </div>
         <div class="charbubble" id="charBubble"></div>
+        <div class="stgbtns"><button id="btnSky" aria-label="สลับกลางวัน/กลางคืน">🌗</button><button id="btnGame" aria-label="เล่นเกมเก็บของ">🎮</button></div>
       </div>
     </div>
   </div>
@@ -5191,6 +5203,86 @@ window.__launcherHome=function(){
   document.querySelectorAll('.show').forEach(el=>{ if(/(Bg|sheet)$/i.test(el.id||'')) el.classList.remove('show'); });
   goScreen('scHome'); window.scrollTo(0,0);
 };
+
+/* ============================================================
+   สเตจ 2: ปุ่มสลับท้องฟ้า + เกมเก็บของที่ร่วงลงมา
+   ============================================================ */
+safe('stage2',function(){
+  const btnSky=$('#btnSky'), btnGame=$('#btnGame');
+  /* --- สลับท้องฟ้า: ตามเวลาจริง → กลางวัน → กลางคืน → ตามเวลาจริง --- */
+  let skyMode=0; /* 0 live, 1 day, 2 night */
+  const ICON=['🌗','☀️','🌙'], NAME=['ตามเวลาจริง','กลางวัน','กลางคืน'];
+  function setSky(m){
+    skyMode=m; S.fast=false;
+    if(m===0){ S.live=true; $('#tLive').classList.add('on'); }
+    else { S.live=false; S.simHour=(m===1?12:23); $('#tLive').classList.remove('on'); $('#tRun').classList.remove('on');
+           $('#tHour').value=S.simHour; $('#tHourV').textContent=fmtH(S.simHour); }
+    btnSky.textContent=ICON[m]; loopSlow();
+  }
+  btnSky.onclick=()=>{ setSky((skyMode+1)%3); toast('ท้องฟ้า: '+NAME[skyMode]); };
+
+  /* --- เกม --- */
+  const layer=document.createElement('div'); layer.id='gameLayer';
+  const hud=document.createElement('div'); hud.id='gameHud'; layer.appendChild(hud);
+  document.body.appendChild(layer);
+  const G={on:false,t:0,score:0,items:[],spawn:0,night:true,last:0,raf:0,end:0};
+  const BEST='mn_game_best_v1';
+  const NIGHT=[['⭐',1],['⭐',1],['⭐',1],['🌟',2],['🌙',3]];
+  const DAY=[['🍃',1],['🍃',1],['🦋',2],['🪙',2],['🌸',1]];
+  const best=()=>+(localStorage.getItem(BEST)||0);
+  function hudTxt(){ hud.textContent=(G.night?'⭐ ':'🪙 ')+G.score+'   ⏱ '+Math.max(0,Math.ceil(G.t))+'s   🏆 '+best(); }
+  function clearItems(){ G.items.forEach(i=>i.el.remove()); G.items=[]; }
+  function spawn(){
+    const k=pick(G.night?NIGHT:DAY), el=document.createElement('div');
+    el.className='gitem'; el.textContent=k[0];
+    const W2=innerWidth, it={el,v:k[1],x:rnd(30,W2-30),y:-40,vy:rnd(85,150),ph:Math.random()*6.3,amp:rnd(8,24),rot:rnd(-1,1)};
+    el.addEventListener('pointerdown',e=>{ e.preventDefault(); collect(it,e); });
+    layer.appendChild(el); G.items.push(it);
+  }
+  function collect(it,e){
+    if(it.dead||!G.on) return; it.dead=true; G.score+=it.v;
+    const p=document.createElement('div'); p.className='gplus'; p.textContent='+'+it.v;
+    p.style.left=(e.clientX-8)+'px'; p.style.top=(e.clientY-20)+'px'; layer.appendChild(p); setTimeout(()=>p.remove(),700);
+    it.el.classList.add('pop'); it.el.style.transform=it.el.style.transform+' scale(1.8)';
+    setTimeout(()=>it.el.remove(),260);
+    if(navigator.vibrate){ try{navigator.vibrate(8);}catch(_){} }
+    if(G.score%6<it.v && CH.mode==='walk'){ CH.mode='jump'; CH.mt=0; CH.vy=Math.sqrt(2*(charBox.offsetHeight*10)*(charBox.offsetHeight*.55)); CH.squash=1; charSay(pick(['เก่งมาก!','เยี่ยม!','เอาอีก!','ว้าว!'])); }
+    hudTxt();
+  }
+  function stop(msg){
+    G.on=false; cancelAnimationFrame(G.raf); clearItems(); btnGame.classList.remove('on');
+    if(msg){
+      const b=best(); let t='ได้ '+G.score+' คะแนน';
+      if(G.score>b){ try{localStorage.setItem(BEST,G.score);}catch(_){} t+=' 🏆 สถิติใหม่!'; }
+      hud.style.display='block'; hud.textContent=t; charSay(G.score>=20?'สุดยอด!':'ไว้เล่นใหม่นะ');
+      clearTimeout(G.end); G.end=setTimeout(()=>{ if(!G.on) hud.style.display='none'; },3500);
+    } else hud.style.display='none';
+  }
+  function loop(now){
+    if(!G.on) return;
+    const dt=Math.min((now-G.last)/1000,.05); G.last=now;
+    const home=document.querySelector('.screen.active'); 
+    if(document.hidden||(home&&home.id!=='scHome')){ stop(false); return; }
+    G.t-=dt; if(G.t<=0){ stop(true); return; }
+    G.spawn-=dt; if(G.spawn<=0){ spawn(); G.spawn=rnd(.35,.75)*(G.t<10?.8:1); hudTxt(); }
+    const H2=innerHeight;
+    for(let i=G.items.length-1;i>=0;i--){
+      const it=G.items[i]; if(it.dead){ G.items.splice(i,1); continue; }
+      it.y+=it.vy*dt; it.ph+=dt*2.2;
+      const x=it.x+Math.sin(it.ph)*it.amp;
+      it.el.style.transform='translate('+x.toFixed(1)+'px,'+it.y.toFixed(1)+'px) rotate('+(Math.sin(it.ph)*18*it.rot).toFixed(0)+'deg)';
+      if(it.y>H2+40){ it.el.remove(); G.items.splice(i,1); }
+    }
+    G.raf=requestAnimationFrame(loop);
+  }
+  btnGame.onclick=()=>{
+    if(G.on){ stop(false); return; }
+    G.night=S.night>.5; G.on=true; G.t=30; G.score=0; G.spawn=0; clearTimeout(G.end);
+    btnGame.classList.add('on'); hud.style.display='block'; hudTxt();
+    charSay(G.night?'เก็บดาวกัน!':'เก็บของกัน!');
+    G.last=performance.now(); G.raf=requestAnimationFrame(loop);
+  };
+});
 </script>
 </body>
 </html>
