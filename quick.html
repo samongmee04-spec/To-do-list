@@ -63,7 +63,7 @@
 <body>
 <div class="q">
   <div class="q-top">
-    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v7</span></div>
+    <div class="q-title">⚡ จดด่วน <span style="font-size:.7rem;font-weight:400;color:var(--ink-soft)">v8</span></div>
     <a class="q-open" href="index.html">เปิดแอป ›</a>
   </div>
   <div class="q-status" id="qStatus">กำลังเตรียมไมค์...</div>
@@ -74,7 +74,7 @@
     <button class="q-btn" id="qUndo" style="display:none;">↩ ยกเลิกที่เพิ่งบันทึก</button>
     <button class="q-btn" id="qRetry" style="display:none;">ลองบันทึกอีกครั้ง</button>
   </div>
-  <div class="q-hint">รายจ่าย: “BTS เช้า 47 บาท” · จ่ายจากบัญชี: “อาหารเช้า 20 บาท K Bank”<br>รายรับ: “รายรับ KTB 30000 บาท” · ตั้งยอด: “ยอด K Bank 1000” · ถอน: “ถอน K Bank 500”<br>หัวข้อ: พูดชื่อโปรเจกต์หรือสมุดโน๊ตนำหน้า เช่น “ทริปเชียงใหม่ จองที่พัก”<br>พูดชื่อลิสต์นำหน้าได้ เช่น “ด่วน ทำป้าย ต่อไป งานที่รอ ส่งรายงาน”<br>ถ้าไม่พูดชื่อลิสต์ จะเข้าช่อง “จดด่วน (รอแยก)” ให้มาย้ายทีหลังในแอป</div>
+  <div class="q-hint">รายจ่าย: “BTS เช้า 47 บาท” · “อาหารเช้า 20 บาท”<br>รายรับ: “K Bank 10000 บาท” → ยึดยอดนี้เป็นรายรับ K Bank ของรอบนี้<br>หัวข้อ: พูดชื่อโปรเจกต์หรือสมุดโน๊ตนำหน้า เช่น “ทริปเชียงใหม่ จองที่พัก”<br>พูดชื่อลิสต์นำหน้าได้ เช่น “ด่วน ทำป้าย ต่อไป งานที่รอ ส่งรายงาน”<br>ถ้าไม่พูดชื่อลิสต์ จะเข้าช่อง “จดด่วน (รอแยก)” ให้มาย้ายทีหลังในแอป</div>
 </div>
 
 <script>
@@ -249,8 +249,7 @@ function pocketParse(seg){
   const slotText = pay ? s.slice(0, m.end) + ' ' + tail.slice(0, pay.i) + ' ' + tail.slice(pay.i + pay.len) : s;
   const slot = pocketSlot(slotText);
   if(!m.baht && !slot.known) return null;                        // เลขเฉย ๆ ไม่มีคำว่าบาท และไม่รู้จักคำ → ไม่ใช่เงิน
-  const def = bSrcOf(slot.key), src = pay && pay.k !== def ? pay.k : null;
-  return {key:slot.key, n:m.n, src, from: src || def, label:slot.key.split('.').slice(1).join('.') + ' · ' + (src || def)};
+  return {key:slot.key, n:m.n, label:slot.key.split('.').slice(1).join('.')};
 }
 
 let pdb = null;
@@ -276,10 +275,8 @@ function initPocket(){
   }catch(e){ setStatus('เชื่อม Pocket ไม่สำเร็จ'); return false; }
 }
 function pocketAdd(e, sign){
-  const inc = ()=>firebase.firestore.FieldValue.increment(sign*e.n);
-  const p = {d:{[e.date]:{[e.key]:inc()}}};
-  if(e.src) p.so = {[e.date]:{[e.key]:{[e.src]:inc()}}};          // จ่ายจากแหล่งที่ไม่ใช่ค่าประจำของช่อง
-  return pdb.set(p, {merge:true});
+  const inc = firebase.firestore.FieldValue.increment(sign*e.n);
+  return pdb.set({d:{[e.date]:{[e.key]:inc}}}, {merge:true});
 }
 
 /* ===================== Pocket: รายรับรายเดือน ===================== */
@@ -300,62 +297,15 @@ const INC_SRC = [
 ];
 function incomeParse(seg){
   const s = moneyNormalize(seg);
-  if(!INCOME_RE.test(s) && !(INC_BANK_RE.test(s) && !SPEND_RE.test(s) && !/ยอด|เหลือ/.test(s) && !pocketSlot(s.replace(INC_BANK_RE,' ')).known)) return null;
+  const named = INCOME_RE.test(s) || /ยอด|คงเหลือ|เหลือ/.test(s) ? srcIn(s) : null;          // "ยอด K Bank 10000" ก็นับเป็นรายรับ
+  if(!INCOME_RE.test(s) && !named && !(INC_BANK_RE.test(s) && !SPEND_RE.test(s) && !pocketSlot(s.replace(INC_BANK_RE,' ')).known)) return null;
   const m = findMoney(s.replace(/7\s*-?\s*11/g,' ')); if(!m || !(m.n>0)) return null;
   const src = (INC_SRC.find(([k,re])=>re.test(s)) || ['Others'])[0];
   return {src, n:m.n};
 }
-function pocketInc(i, sign){
-  const inc = firebase.firestore.FieldValue.increment(sign*i.n);
-  return pdb.set({m:{[i.month]:{inc:{[i.src]:inc}}}}, {merge:true});
-}
-
-/* ===================== Pocket: ยอดคงเหลือ / ถอน / โอน ===================== */
-/* ค่าเดิมของ Me pocket (ใช้เมื่อยังไม่เคยแก้รายการ Daily ใน Preset) */
-const BAL_WD=[['ค่าเดินทาง',['Motorcycle เช้า','MRT เช้า','Van','BTS เช้า','BTS เย็น','MRT เย็น','Express']],['ค่ากิน',['Breakfast','Launch','Dinner']],['ใช้จ่ายอื่นๆ',['ซื้อของ','อื่นๆ']]];
-const BAL_AUTO={'ค่าเดินทาง.Motorcycle เช้า':40,'ค่าเดินทาง.MRT เช้า':22,'ค่าเดินทาง.Van':35,'ค่าเดินทาง.BTS เช้า':59,'ค่าเดินทาง.BTS เย็น':58,'ค่าเดินทาง.MRT เย็น':22,'ค่าเดินทาง.Express':35};
-const BAL_AFROM='2026-11-04';
-/* ===== ยอดคงเหลือแต่ละแหล่งเงิน (โค้ดชุดเดียวกันใน Me pocket index.html และ To-do-list quick.html — แก้ต้องแก้ทั้งสองที่) =====
-   ยอด = ยอดตั้งต้น + รายรับเข้าแหล่งนั้น − รายจ่าย Daily ที่จ่ายจากแหล่งนั้น ± ถอน/โอน  (ยกยอดต่อเนื่อง ไม่รีเซ็ตตามรอบ)
-   ช่อง BTS… หักจาก BTS · MRT… หักจาก MRT · ช่องอื่นหักจาก Cash · จ่ายจากแหล่งอื่นเก็บใน so[วันที่][ช่อง][แหล่ง]
-   bal[แหล่ง] = จุดตั้งยอด {v ยอด, P รอบ, at วันที่, ib รายรับรอบนั้นตอนตั้ง, sb รายจ่ายวันนั้นตอนตั้ง, ts}
-   bx[id] = ถอน/โอน {f จาก, t ไป, v, ts} */
-const BAL_P0='2026-10', BAL_D0='2026-10-25';
-const bYmd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const bPOf=d=>{const p=d.getDate()>=25?d:new Date(d.getFullYear(),d.getMonth()-1,1);return p.getFullYear()+'-'+String(p.getMonth()+1).padStart(2,'0')};
-function bSrcOf(k){const n=String(k).split('.').slice(1).join('.');return /^bts/i.test(n)?'BTS':/^mrt/i.test(n)?'MRT':'Cash'}
-function bAutoMap(D){
-  const o={};
-  if(!D.set||!D.set.dinit){BAL_WD.forEach(([g,its])=>its.forEach(n=>{const k=g+'.'+n;if(BAL_AUTO[k]>0)o[k]=BAL_AUTO[k]}));return o}
-  Object.values(D.set.wd||{}).forEach(x=>{if(x&&!x.del&&x.k&&+x.def>0)o[x.k]=+x.def});return o;
-}
-function bDay(D,k,today){
-  const e=(D.d||{})[k]||{},w=new Date(k+'T00:00').getDay(),from=(D.set&&D.set.dfrom)||BAL_AFROM;
-  return (w>0&&w<6&&k>=from&&k<=today)?Object.assign({},bAutoMap(D),e):e;
-}
-function bSpend(D,k,s,today){
-  const e=bDay(D,k,today),ov=(D.so||{})[k]||{};let t=0;
-  for(const slot of Object.keys(e)){
-    const v=+e[slot]||0,o=ov[slot]||{};let os=0;
-    for(const src of Object.keys(o)){const a=+o[src]||0;os+=a;if(src===s)t+=a}
-    if(bSrcOf(slot)===s)t+=Math.max(0,v-os);
-  }
-  return t;
-}
-function bAnchor(D,s){const a=(D.bal||{})[s];return a&&a.at?a:{v:0,P:BAL_P0,at:BAL_D0,ib:0,sb:0,ts:0}}
-function balOf(D,s){
-  const a=bAnchor(D,s),today=bYmd(new Date()),from=(D.set&&D.set.dfrom)||BAL_AFROM;let b=+a.v||0;
-  for(const P of Object.keys(D.m||{})){if(P<a.P)continue;const v=+(((D.m[P]||{}).inc||{})[s])||0;b+=P===a.P?v-(+a.ib||0):v}
-  const days=new Set(Object.keys(D.d||{}).filter(k=>k>=a.at));
-  for(let d=new Date((a.at>from?a.at:from)+'T00:00');bYmd(d)<=today;d.setDate(d.getDate()+1)){const w=d.getDay();if(w>0&&w<6)days.add(bYmd(d))}
-  days.add(a.at);
-  for(const k of days){const sp=bSpend(D,k,s,today);b-=k===a.at?sp-(+a.sb||0):sp}
-  for(const x of Object.values(D.bx||{})){if(!x||!(+x.ts>(+a.ts||0)))continue;if(x.f===s)b-=+x.v||0;if(x.t===s)b+=+x.v||0}
-  return Math.round(b*100)/100;
-}
-function bNewAnchor(D,s,v){
-  const n=new Date(),t=bYmd(n),P=bPOf(n);
-  return {v:+v||0,P,at:t,ib:+(((D.m||{})[P]||{}).inc||{})[s]||0,sb:bSpend(D,t,s,t),ts:Date.now()};
+/* รายรับ: ยึดตัวเลขที่พูดล่าสุดเป็นยอดของแหล่งนั้นในรอบนี้ (เขียนทับ ไม่บวกเพิ่ม) */
+function pocketIncSet(i, v){
+  return pdb.set({m:{[i.month]:{inc:{[i.src]: v===null ? firebase.firestore.FieldValue.delete() : v}}}}, {merge:true});
 }
 
 function srcAll(t){
@@ -363,29 +313,6 @@ function srcAll(t){
     .filter(Boolean).sort((a,b)=>a.i-b.i);
 }
 function srcIn(t){ return srcAll(t)[0] || null; }
-/* "ยอด K Bank 1000" → ตั้งยอดคงเหลือ */
-function balSetParse(seg){
-  const s = moneyNormalize(seg);
-  if(!/ยอด|คงเหลือ|เหลือ/.test(s) || INCOME_RE.test(s)) return null;
-  const p = srcIn(s); if(!p) return null;
-  const m = findMoney(s.slice(0,p.i) + ' ' + s.slice(p.i+p.len)); if(!m || !(m.n>=0)) return null;
-  return {src:p.k, n:m.n};
-}
-/* "ถอน K Bank 500" → K Bank ไป Cash · "โอน K Bank ไป SCB 500" → K Bank ไป SCB */
-function transferParse(seg){
-  const s = moneyNormalize(seg);
-  if(INCOME_RE.test(s)) return null;                                  // รับโอน / โอนเข้า = รายรับ
-  const isW = /ถอน/.test(s), isT = /โอน|ย้าย/.test(s);
-  if(!isW && !isT) return null;
-  const all = srcAll(s);
-  let rest = s; all.slice().reverse().forEach(x=>{ rest = rest.slice(0,x.i) + ' ' + rest.slice(x.i+x.len); });
-  const m = findMoney(rest); if(!m || !(m.n>0)) return null;
-  let f, t;
-  if(all.length >= 2){ f = all[0].k; t = all[1].k; }
-  else if(isW && all.length === 1){ f = all[0].k; t = 'Cash'; }
-  else return null;
-  return f === t ? null : {f, t, n:m.n};
-}
 async function pocketData(){ const snap = await pdb.get(); return snap.exists ? (snap.data() || {}) : {}; }
 
 /* ===================== หัวข้อ: โปรเจกต์ (เฉพาะกิจ) + สมุดโน๊ต ===================== */
@@ -544,11 +471,6 @@ function writeOps(ops){
       if(!bad){
         lastSaved = ops; pending = null;
         setStatus('บันทึกแล้ว ✓  ' + ops.length + ' รายการ');
-        const srcs = [...new Set(ops.flatMap(o=>o.srcs||[]))];
-        if(srcs.length && pdb) pocketData().then(D=>{
-          if(lastSaved !== ops) return;
-          setStatus('บันทึกแล้ว ✓  ' + ops.length + ' รายการ\n' + srcs.map(k=>k + ' เหลือ ' + Math.round(balOf(D,k)).toLocaleString('en-US')).join(' · '));
-        }).catch(()=>{});
         $('qUndo').style.display = '';
       }else{
         pending = ops;
@@ -583,28 +505,14 @@ function saveSpoken(text){
     }
   };
   for(const seg of segs){
-    const bs = balSetParse(seg);
-    if(bs){
-      let prev;
-      ops.push({kind:'money', label:'🏦 ตั้งยอด', text:bs.src + ' = ' + bs.n.toLocaleString('en-US') + ' ฿', id:newId(), srcs:[bs.src],
-        run:async()=>{ const D = await pocketData(); prev = (D.bal||{})[bs.src] || null;
-                       await pdb.set({bal:{[bs.src]:bNewAnchor(D, bs.src, bs.n)}}, {merge:true}); },
-        undo:()=>pdb.set({bal:{[bs.src]: prev || firebase.firestore.FieldValue.delete()}}, {merge:true})});
-      continue;
-    }
-    const tr = transferParse(seg);
-    if(tr){
-      const bid = newId();
-      ops.push({kind:'money', label:'🔁 ถอน/โอน', text:tr.f + ' → ' + tr.t + '  ' + tr.n.toLocaleString('en-US') + ' ฿', id:bid, srcs:[tr.f, tr.t],
-        run:()=>pdb.set({bx:{[bid]:{f:tr.f, t:tr.t, v:tr.n, ts:Date.now()}}}, {merge:true}),
-        undo:()=>pdb.set({bx:{[bid]:firebase.firestore.FieldValue.delete()}}, {merge:true})});
-      continue;
-    }
     const inc = incomeParse(seg);
     if(inc){
       inc.month = month;
-      ops.push({kind:'money', label:'💰 รายรับ', text:inc.src + '  +' + inc.n.toLocaleString('en-US') + ' ฿', id:newId(), srcs:[inc.src],
-        run:()=>pocketInc(inc, 1), undo:()=>pocketInc(inc, -1)});
+      let prev = null;
+      ops.push({kind:'money', label:'💰 รายรับ', text:inc.src + ' = ' + inc.n.toLocaleString('en-US') + ' ฿', id:newId(),
+        run:async()=>{ const D = await pocketData(); const v = ((((D.m||{})[inc.month]||{}).inc)||{})[inc.src];
+                       prev = v === undefined ? null : v; await pocketIncSet(inc, inc.n); },
+        undo:()=>pocketIncSet(inc, prev)});
       continue;
     }
     const tm = matchTopic(seg);
@@ -616,7 +524,7 @@ function saveSpoken(text){
     const exp = pocketParse(seg);
     if(exp){
       exp.date = date;
-      ops.push({kind:'money', label:'💸 รายจ่าย', text:exp.label + '  ' + exp.n.toLocaleString('en-US') + ' ฿', id:newId(), srcs:[exp.from],
+      ops.push({kind:'money', label:'💸 รายจ่าย', text:exp.label + '  ' + exp.n.toLocaleString('en-US') + ' ฿', id:newId(),
         run:()=>pocketAdd(exp, 1), undo:()=>pocketAdd(exp, -1)});
       continue;
     }
