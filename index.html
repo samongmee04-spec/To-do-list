@@ -397,6 +397,12 @@ html.inLauncher .oapp{display:inline-flex}
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   filter:drop-shadow(0 4px 6px rgba(40,22,10,.35));transition:transform .12s ease}
 .vbBtn:active{transform:translateX(-50%) scale(.95)}
+/* ปุ่มฟาร์มมอนสเตอร์ มุมขวาล่าง บนพื้นโต๊ะถัดจากถ้วยเครื่องเขียน ไม่ทับของบนโต๊ะ */
+.mfBtn{position:absolute;z-index:3;left:86.5%;top:89.6%;width:11%;aspect-ratio:1/1;padding:0;border:0;
+  background:transparent url(assets/monster-farm.webp) center/100% 100% no-repeat;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  filter:drop-shadow(0 3px 5px rgba(40,22,10,.35));transition:transform .12s ease}
+.mfBtn:active{transform:scale(.94)}
 #scVisual{background:#3a2920;color:#f2e7dd;
   padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 86px)}
 .vbPage{flex:1 1 auto;min-height:0;display:grid;place-items:center;border-radius:22px;
@@ -1360,6 +1366,7 @@ body.note-open{overflow:hidden;}
     <button class="hs" data-hs="note"      style="left:46%;top:84%;width:20.5%;height:9%"      aria-label="สมุดโน้ต"></button>
     <a class="hs" data-link="diary"  data-name="My Diary"   style="left:67%;top:85%;width:17.5%;height:8.5%"    aria-label="My Diary"></a>
     <button class="vbBtn" id="vbBtn" type="button" aria-label="Visual Board"></button>
+    <button class="mfBtn" id="mfBtn" type="button" aria-label="ฟาร์มมอนสเตอร์"></button>
    </div>
   </div>
 </section>
@@ -3485,6 +3492,7 @@ function hsTap(kind){
   if(kind==='dart')   return goScreen('scTask');
   if(kind==='note')   return goScreen('scNote');
   if(kind==='visual') return location.href='visual.html';
+  if(kind==='farm')   return location.href='monster-farm.html';
 }
 function enterSelf(){
   renderSelfBoards(); startPocket(); renderPocket();
@@ -3500,6 +3508,7 @@ function bindSelf(){
   $('#bsheet').onclick=e=>{ if(e.target.id==='bsheet'){ $('#bsheet').classList.remove('show'); bsList=null; } };
   $('#bsAddBtn').onclick=addBoardItem;
   $('#vbBtn').onclick=()=>hsTap('visual');
+  $('#mfBtn').onclick=()=>hsTap('farm');
   bindSelfItem();
   $('#bsInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addBoardItem(); });
   $('#bsShowToggle').onclick=()=>{ bsShowNew=!bsShowNew; $('#bsSw').classList.toggle('on',bsShowNew); };
