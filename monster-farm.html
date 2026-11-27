@@ -3,51 +3,73 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2b2a33">
-<title>ฟาร์มมอนสเตอร์ · โปรเจกต์ของฉัน</title>
+<meta name="theme-color" content="#f4ecdc">
+<title>ฟาร์มปลาโปรเจกต์ของฉัน</title>
 <style>
 * { box-sizing: border-box; }
-body { margin:0; background:#2b2a33; color:#f1ede6; font-family:'Nunito','Anuphan',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
-header { display:flex; align-items:center; gap:10px; padding:12px 14px; position:sticky; top:0; z-index:5; background:#2b2a33; border-bottom:2px solid #3f3d4a; }
+body { margin:0; background:#f4ecdc; color:#3b3229; font-family:'Nunito','Anuphan',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; user-select:none; }
+header { display:flex; align-items:center; gap:10px; padding:12px 14px; position:sticky; top:0; z-index:5; background:#f4ecdc; border-bottom:2px solid #d9cbb0; }
 header h1 { font-size:16px; margin:0; letter-spacing:.5px; flex:1; }
-header a.back { color:#f1ede6; text-decoration:none; font-weight:800; background:#3f3d4a; padding:6px 10px; border-radius:10px; }
+header a.back, button.ghost { color:#3b3229; text-decoration:none; font-weight:800; background:#e7dac2; border:0; padding:6px 10px; border-radius:10px; cursor:pointer; font:inherit; }
 nav { display:flex; gap:6px; padding:8px 14px; }
-nav button { flex:1; padding:8px 0; border:0; border-radius:10px; background:#3f3d4a; color:#cfc9bf; font-weight:800; cursor:pointer; }
-nav button.on { background:#f2c94c; color:#2b2a33; }
+nav button { flex:1; padding:8px 0; border:0; border-radius:10px; background:#e7dac2; color:#6b5b48; font-weight:800; cursor:pointer; font:inherit; }
+nav button.on { background:#3b3229; color:#f4ecdc; }
 main { padding:8px 12px 40px; }
-.banner { background:#5a3d1f; color:#ffd98a; font-size:12px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
+.banner { background:#f3d9a4; color:#6b4a12; font-size:12px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
 .banner.show { display:block; }
+.hint { font-size:12px; color:#7a6a55; margin:0 2px 10px; }
 
-/* ฟาร์ม */
-.zone { position:relative; height:200px; margin-bottom:14px; border-radius:16px; overflow:hidden;
-  background:repeating-linear-gradient(0deg,#3a4a36 0 14px,#41533d 14px 28px); border:3px solid #55654d; }
-.zone h2 { position:absolute; top:6px; left:10px; margin:0; font-size:12px; letter-spacing:1px; background:rgba(0,0,0,.45); padding:3px 8px; border-radius:8px; z-index:2; }
-.mon { position:absolute; width:64px; height:64px; cursor:pointer; transition:left 2.4s linear, top 2.4s linear; image-rendering:pixelated; }
-.mon canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
-.mon.super { filter:drop-shadow(0 0 6px #ffd54a) drop-shadow(0 0 2px #fff); }
-.mon .tag { position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); font-size:10px; white-space:nowrap; background:rgba(0,0,0,.6); padding:1px 5px; border-radius:6px; }
+/* บ่อปลาแต่ละโซน */
+.pond { position:relative; height:210px; margin-bottom:14px; border-radius:22px; overflow:hidden;
+  background:radial-gradient(circle at 25% 20%, rgba(255,255,255,.7), transparent 55%),
+             radial-gradient(circle at 80% 90%, rgba(60,40,20,.08), transparent 50%), var(--pond);
+  border:2px solid rgba(60,40,20,.18); box-shadow: inset 0 0 30px rgba(60,40,20,.08); }
+.pond h2 { position:absolute; top:8px; left:12px; margin:0; font-size:11px; letter-spacing:1.5px; color:#3b3229;
+  background:rgba(255,255,255,.7); padding:3px 9px; border-radius:10px; z-index:2; }
+.fish { position:absolute; width:70px; height:50px; cursor:pointer; transition:left 6s ease-in-out, top 6s ease-in-out; }
+.flip { width:100%; height:100%; transition:transform .4s ease; }
+.flip.left { transform:scaleX(-1); }
+.wrap { width:100%; height:100%; position:relative; }
+.wrap svg { width:100%; height:100%; overflow:visible; display:block; }
+.fish.super .wrap { filter:drop-shadow(0 0 6px rgba(255,205,70,.9)); }
+.tag { position:absolute; left:50%; bottom:-16px; transform:translateX(-50%); font-size:10px; white-space:nowrap;
+  background:rgba(255,255,255,.75); color:#3b3229; padding:1px 6px; border-radius:6px; pointer-events:none; }
+.jump { animation:jump .9s ease-out; }
+@keyframes jump {
+  0%   { transform:translateY(0) rotate(0); }
+  20%  { transform:translateY(-34px) rotate(-14deg); }
+  40%  { transform:translateY(-8px) rotate(12deg); }
+  60%  { transform:translateY(-26px) rotate(-10deg); }
+  80%  { transform:translateY(-4px) rotate(6deg); }
+  100% { transform:translateY(0) rotate(0); }
+}
+.wiggle { animation:wiggle .5s ease-in-out; }
+@keyframes wiggle { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
+.drop { position:absolute; width:6px; height:6px; border-radius:50%; background:#8fd3ff; pointer-events:none; animation:drop .7s ease-out forwards; }
+@keyframes drop { to { transform:translate(var(--dx), var(--dy)); opacity:0; } }
 
-/* Dex และไข่ */
-.card { display:flex; gap:10px; background:#37353f; border-radius:14px; padding:10px; margin-bottom:10px; cursor:pointer; }
-.card .pic { width:64px; height:64px; flex:none; background:#25242b; border-radius:10px; display:grid; place-items:center; overflow:hidden; }
+/* ทะเบียนและไข่ */
+.card { display:flex; gap:10px; background:#fbf6ea; border:1px solid #e3d5b8; border-radius:16px; padding:10px; margin-bottom:10px; cursor:pointer; }
+.card .pic { width:72px; height:60px; flex:none; background:#efe4cc; border-radius:12px; display:grid; place-items:center; overflow:hidden; }
 .card .pic img { width:100%; height:100%; object-fit:contain; }
-.card .pic canvas { width:56px; height:56px; image-rendering:pixelated; }
+.card .pic svg { width:70px; height:52px; }
 .card .body { min-width:0; flex:1; }
 .card b { display:block; font-size:14px; }
-.card small { color:#bdb6aa; font-size:11.5px; display:block; line-height:1.4; }
-.pill { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:8px; background:#f2c94c; color:#2b2a33; margin-right:4px; }
-.pill.gray { background:#6b6878; color:#fff; }
-.egg-form { background:#37353f; border-radius:14px; padding:10px; margin-bottom:12px; display:grid; gap:6px; }
-input, select, textarea { width:100%; padding:8px 10px; border-radius:10px; border:1px solid #55536a; background:#25242b; color:#f1ede6; font:inherit; }
-button.act { padding:9px 12px; border:0; border-radius:10px; background:#f2c94c; color:#2b2a33; font-weight:800; cursor:pointer; }
-button.ghost { background:#55536a; color:#f1ede6; }
+.card small { color:#7a6a55; font-size:11.5px; display:block; line-height:1.4; }
+.pill { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:8px; background:#f2c94c; color:#3b3229; margin:2px 4px 2px 0; }
+.pill.gray { background:#d9cbb0; }
+.egg-form { background:#fbf6ea; border:1px solid #e3d5b8; border-radius:16px; padding:10px; margin-bottom:12px; display:grid; gap:6px; }
+input, select, textarea { width:100%; padding:8px 10px; border-radius:10px; border:1px solid #cdbd9c; background:#fffdf6; color:#3b3229; font:inherit; }
+button.act { padding:9px 12px; border:0; border-radius:10px; background:#3b3229; color:#f4ecdc; font-weight:800; cursor:pointer; font:inherit; }
 
 /* ป๊อปอัป */
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; justify-content:center; z-index:10; }
+.modal { position:fixed; inset:0; background:rgba(40,28,15,.45); display:none; align-items:flex-end; justify-content:center; z-index:10; }
 .modal.show { display:flex; }
-.sheet { width:100%; max-width:520px; background:#2b2a33; border-radius:18px 18px 0 0; padding:16px; max-height:88vh; overflow:auto; }
+.sheet { width:100%; max-width:520px; background:#f4ecdc; border-radius:20px 20px 0 0; padding:16px; max-height:90vh; overflow:auto; }
 .sheet h3 { margin:0 0 10px; font-size:15px; }
-.sheet label { font-size:11.5px; color:#bdb6aa; display:block; margin:8px 0 3px; }
+.sheet label { font-size:11.5px; color:#7a6a55; display:block; margin:8px 0 3px; }
+.big { width:100%; height:170px; background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.8), transparent 60%), var(--pond, #efe4cc); border-radius:16px; display:grid; place-items:center; margin-bottom:10px; }
+.big svg { width:180px; height:120px; }
 .row { display:flex; gap:8px; margin-top:12px; }
 .row button { flex:1; }
 </style>
@@ -55,39 +77,43 @@ button.ghost { background:#55536a; color:#f1ede6; }
 <body>
 <header>
   <a class="back" href="index.html#self">←</a>
-  <h1>ฟาร์มมอนสเตอร์</h1>
-  <button class="act ghost" id="reload" type="button">↻</button>
+  <h1>ฟาร์มปลาโปรเจกต์</h1>
+  <button class="ghost" id="reload" type="button">↻</button>
 </header>
 <nav>
-  <button class="on" data-tab="farm">ฟาร์ม</button>
+  <button class="on" data-tab="farm">บ่อปลา</button>
   <button data-tab="dex">ทะเบียน</button>
   <button data-tab="egg">ไข่ไอเดีย</button>
 </nav>
 <main>
   <div class="banner" id="banner">ยังไม่ได้ตั้งค่า API_URL จึงแสดงข้อมูลตัวอย่าง และการแก้ไขจะยังไม่บันทึกลงชีท</div>
+  <p class="hint">แตะปลาหนึ่งครั้งให้มันกระโดด แตะสองครั้งเพื่อดูรายละเอียด</p>
   <section id="tab-farm"></section>
   <section id="tab-dex" hidden></section>
   <section id="tab-egg" hidden></section>
 </main>
 
 <div class="modal" id="editor"><div class="sheet" id="editorBody"></div></div>
+<div class="modal" id="detail"><div class="sheet" id="detailBody"></div></div>
 
 <script>
-// ===== ตั้งค่า: วาง Web app URL จาก Apps Script และรหัสลับ (ต้องตรงกับ SECRET ใน Code.gs) =====
+// ===== ตั้งค่า: Web app URL ของ Apps Script และรหัสลับ (ต้องตรงกับ SECRET ใน Code.gs) =====
 const API_URL = 'https://script.google.com/macros/s/AKfycbxTn09gumpZgoegsQd1b7zieiIBCIiR1SdiKnbilZ-aPpNVW448qfeCsjAWG_nMr7MT/exec';
 const TOKEN   = 'monster0244@';
 
-// ---------- ข้อมูลและการเชื่อมต่อ ----------
+// ---------- โซนและสี ----------
 const ZONES = [
-  { type:'App',        label:'APP',        species:'slime' },
-  { type:'Micro site', label:'MICRO SITE', species:'bird'  },
-  { type:'System',     label:'SYSTEM',     species:'golem' },
-  { type:'Others',     label:'OTHERS',     species:'fox'   },
+  { type:'App',        label:'APP',        pond:'#f6d6b0', hue:24  },
+  { type:'Micro site', label:'MICRO SITE', pond:'#cfe6ef', hue:200 },
+  { type:'System',     label:'SYSTEM',     pond:'#d3ead0', hue:138 },
+  { type:'Others',     label:'OTHERS',     pond:'#e3d6ef', hue:272 },
 ];
-const PHASES = ['Egg','Baby','Child','Adult','Super'];
 const PHASE_TH = ['ไข่','Baby (Prototype)','Child (Develop)','Adult (Decorate/Function)','Super (Publish)'];
+const PHASE_SIZE = [44, 54, 66, 80, 96];   // ความกว้างของปลาในบ่อ (px)
+const WANDER_MS = 6000;                    // ความเร็วการว่าย: ช้าลงกว่าเดิม
 
 let S = { projects:[], monsters:[], ideas:[], history:[] };
+let timers = [];
 
 const DEMO = {
   projects:[
@@ -102,6 +128,7 @@ const DEMO = {
   history:[]
 };
 
+// ---------- การเชื่อมต่อ ----------
 async function api(action, data={}) {
   if (!API_URL) return null;
   const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -122,121 +149,161 @@ async function load() {
   render();
 }
 
-function monsterOf(code) {
-  return S.monsters.find(m => String(m.Code) === code) || null;
-}
+function monsterOf(code) { return S.monsters.find(m => String(m.Code) === code) || null; }
 function phaseOf(code) {
   const m = monsterOf(code);
   const p = m ? Number(m.Phase) : 1;
-  return isNaN(p) ? 1 : p;
+  return isNaN(p) ? 1 : Math.max(0, Math.min(4, p));
 }
-function zoneOf(type) {
-  return ZONES.find(z => z.type === type) || ZONES[3];
-}
+function zoneOf(type) { return ZONES.find(z => z.type === type) || ZONES[3]; }
 
-// ---------- สร้างรูปพิกเซลจากรหัส ----------
+// ---------- วาดปลาด้วย SVG จากโค้ด (ไม่ต้องใช้ไฟล์ภาพ) ----------
 function hash(str) { let h=2166136261; for (const c of str) { h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-function drawSprite(canvas, code, phase, outfit, color) {
-  const ctx = canvas.getContext('2d');
-  const N = 16;
-  canvas.width = N; canvas.height = N;
-  ctx.clearRect(0,0,N,N);
+function fishSVG(code, type, phase, outfit, color) {
+  if (phase === 0) return eggSVG(code, type);
   const r = rng(hash(code));
-  const hue = Math.floor(r()*360);
-  const body = `hsl(${hue} 70% 62%)`, dark = `hsl(${hue} 55% 30%)`;
-  if (phase === 0) { // ไข่ มีลายจุด
-    ctx.fillStyle = '#f4ecd8';
-    for (let y=2;y<14;y++) for (let x=3;x<13;x++) {
-      const dx=(x-7.5)/5, dy=(y-8)/6;
-      if (dx*dx+dy*dy<1) ctx.fillRect(x,y,1,1);
-    }
-    ctx.fillStyle = `hsl(${hue} 60% 60%)`;
-    [[5,6],[9,9],[6,11],[10,5]].forEach(([x,y]) => ctx.fillRect(x,y,2,1));
-    return;
+  const zone = zoneOf(type);
+  const hue = (zone.hue + Math.floor(r()*30) - 15 + 360) % 360;
+  const body = `hsl(${hue} 65% 66%)`, belly = `hsl(${hue} 70% 85%)`, edge = `hsl(${hue} 50% 32%)`;
+  // ลำตัวใหญ่ขึ้นตามเฟส
+  const rx = [0, 20, 25, 30, 34][phase], ry = [0, 11, 13, 15, 18][phase];
+  const cx = 58, cy = 40;
+  const tail = [0, 14, 16, 20, 24][phase];
+  let fins = '';
+  if (phase >= 2) fins += `<path d="M ${cx-6} ${cy-ry+2} Q ${cx+4} ${cy-ry-14} ${cx+18} ${cy-ry+2} Z" fill="${body}" stroke="${edge}" stroke-width="1.5"/>`;
+  if (phase >= 2) fins += `<ellipse cx="${cx+14}" cy="${cy+6}" rx="8" ry="4" transform="rotate(20 ${cx+14} ${cy+6})" fill="${body}" stroke="${edge}" stroke-width="1.2" opacity=".85"/>`;
+  let scales = '';
+  if (phase >= 3) for (let i=0;i<4;i++) scales += `<path d="M ${cx-8+i*9} ${cy-4} q 4 4 0 8" fill="none" stroke="${edge}" stroke-width="1.2" opacity=".5"/>`;
+  let patches = '';
+  if (phase === 4) { // โคอิ มีจุดสีขาวและแดง
+    patches = `<ellipse cx="${cx-6}" cy="${cy-4}" rx="9" ry="6" fill="#fff8ee" opacity=".92"/>
+               <ellipse cx="${cx+12}" cy="${cy+4}" rx="6" ry="4" fill="#e0463c" opacity=".85"/>`;
   }
-  // ขนาดลำตัวเพิ่มตามเฟส: Baby เล็ก -> Super ใหญ่สุด
-  const rad = [0, 3.2, 4.0, 4.6, 5.0][phase];
-  const top = [0, 7, 6, 5, 4][phase];
-  const bottom = [0, 13, 13, 13, 13][phase];
-  const grid = [];
-  for (let y=0;y<N;y++) grid.push(new Array(N).fill(0));
-  const cy = (top+bottom)/2, ry = (bottom-top)/2 + 0.5;
-  for (let y=top;y<=bottom;y++) for (let x=0;x<N;x++) {
-    const dx=(x-7.5)/rad, dy=(y-cy)/ry;
-    if (dx*dx+dy*dy < 1 + (r()-0.5)*0.15 && x<=7) { grid[y][x]=1; grid[y][N-1-x]=1; }
-  }
-  // ขาตั้งแต่ Child ขึ้นไป
-  if (phase >= 2) { grid[bottom+1][5]=grid[bottom+1][6]=grid[bottom+1][9]=grid[bottom+1][10]=1; }
-  // หูหรือเขา (Child ขึ้นไป)
-  if (phase >= 2) { grid[top-1][3]=grid[top-1][12]=1; grid[top-2][3]=grid[top-2][12]=1; }
-  // ปีกแบบเล็กตอน Adult
-  if (phase >= 3) { for (let y=cy-1;y<=cy+1;y++) { grid[y|0][0]=1; grid[y|0][N-1]=1; } }
-  ctx.fillStyle = body;
-  for (let y=0;y<N;y++) for (let x=0;x<N;x++) if (grid[y][x]) ctx.fillRect(x,y,1,1);
-  // เสื้อผ้า (แถบล่างลำตัว)
-  ctx.fillStyle = color || '#f2c94c';
-  for (let y=bottom-1;y<=bottom;y++) for (let x=3;x<13;x++) if (grid[y] && grid[y][x]) ctx.fillRect(x,y,1,1);
-  if (outfit === 'hat') { ctx.fillStyle = color || '#e0463c'; for (let x=4;x<12;x++) ctx.fillRect(x,top-2,1,1); ctx.fillRect(5,top-3,6,1); }
-  // ตา (ใหญ่ขึ้นตามเฟส)
-  const eyeY = Math.round(cy) - 1;
-  ctx.fillStyle = '#1b1a20';
-  ctx.fillRect(5,eyeY,2,2); ctx.fillRect(9,eyeY,2,2);
-  ctx.fillStyle = '#fff'; ctx.fillRect(5,eyeY,1,1); ctx.fillRect(9,eyeY,1,1);
-  if (phase >= 3) { ctx.fillStyle = dark; ctx.fillRect(6,eyeY+3,4,1); }
-  // มงกุฎ Super
-  if (phase === 4) {
-    ctx.fillStyle = '#ffd54a';
-    [4,6,8,10].forEach((x,i)=> ctx.fillRect(x, 1 + (i%2), 1, 2));
-    ctx.fillRect(4,3,7,1);
-    ctx.fillStyle = '#fff6c2'; ctx.fillRect(0,0,1,1); ctx.fillRect(15,2,1,1);
-  }
+  let crown = '';
+  if (phase === 4) crown = `<path d="M ${cx+rx-12} ${cy-ry-4} l 3 -8 l 3 5 l 3 -7 l 3 7 l 3 -5 l 2 8 z" fill="#ffd54a" stroke="#b8860b" stroke-width="1"/>`;
+  const oc = outfit === 'hat' ? `<path d="M ${cx+rx-16} ${cy-ry+1} q 8 -10 16 0 z" fill="${color || '#e0463c'}"/>` : '';
+  const eyeX = cx + rx - 8, eyeY = cy - 3;
+  return `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <path d="M ${cx-rx+6} ${cy} L ${cx-rx-tail} ${cy-tail*0.9} Q ${cx-rx-tail+6} ${cy} ${cx-rx-tail} ${cy+tail*0.9} Z" fill="${body}" stroke="${edge}" stroke-width="1.5"/>
+    ${fins}
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${body}" stroke="${edge}" stroke-width="1.8"/>
+    <ellipse cx="${cx+2}" cy="${cy+ry*0.45}" rx="${rx*0.7}" ry="${ry*0.45}" fill="${belly}" opacity=".7"/>
+    ${scales}${patches}${oc}
+    <circle cx="${eyeX}" cy="${eyeY}" r="${Math.max(3, ry*0.22)}" fill="#fff" stroke="${edge}" stroke-width="1"/>
+    <circle cx="${eyeX+1}" cy="${eyeY}" r="${Math.max(1.5, ry*0.12)}" fill="#1b1a20"/>
+    <path d="M ${cx+rx-3} ${cy+4} q 3 2 5 -1" fill="none" stroke="${edge}" stroke-width="1.4" stroke-linecap="round"/>
+    ${crown}
+  </svg>`;
+}
+
+function eggSVG(code, type) {
+  const r = rng(hash(code));
+  const zone = zoneOf(type);
+  const spot = `hsl(${zone.hue} 55% 60%)`;
+  let dots = '';
+  for (let i=0;i<5;i++) dots += `<circle cx="${40+r()*40}" cy="${35+r()*40}" r="${3+r()*2}" fill="${spot}" opacity=".8"/>`;
+  return `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="60" cy="42" rx="22" ry="27" fill="#fbf3df" stroke="#8a7a60" stroke-width="2"/>${dots}</svg>`;
 }
 
 // ---------- วาดหน้าต่างๆ ----------
-function render() {
-  renderFarm(); renderDex(); renderEgg();
-}
+function render() { renderFarm(); renderDex(); renderEgg(); }
 
-let timers = [];
 function renderFarm() {
   const el = document.getElementById('tab-farm');
   el.innerHTML = '';
   timers.forEach(clearInterval); timers = [];
   ZONES.forEach(z => {
-    const zone = document.createElement('div');
-    zone.className = 'zone'; zone.dataset.type = z.type;
-    zone.innerHTML = `<h2>${z.label}</h2>`;
-    const list = S.projects.filter(p => (p.type || 'Others') === z.type);
-    list.forEach(p => {
-      const ph = phaseOf(p.code);
-      const m = document.createElement('div');
-      m.className = 'mon' + (ph === 4 ? ' super' : ''); m.dataset.phase = ph;
-      m.innerHTML = `<canvas></canvas><span class="tag">${p.code} ${p.name}</span>`;
-      drawMonster(m.querySelector('canvas'), p, ph);
-      place(m, zone);
-      m.onclick = () => openEditor(p.code);
-      zone.appendChild(m);
+    const pond = document.createElement('div');
+    pond.className = 'pond';
+    pond.style.setProperty('--pond', z.pond);
+    pond.innerHTML = `<h2>${z.label}</h2>`;
+    S.projects.filter(p => (p.type || 'Others') === z.type).forEach(p => {
+      pond.appendChild(makeFish(p));
     });
-    el.appendChild(zone);
+    el.appendChild(pond);
   });
 }
 
-function drawMonster(canvas, p, ph) {
+function makeFish(p) {
+  const ph = phaseOf(p.code);
   const m = monsterOf(p.code) || {};
-  drawSprite(canvas, p.code, ph, m.Outfit, m.Color);
+  const node = document.createElement('div');
+  node.className = 'fish' + (ph === 4 ? ' super' : '');
+  node.style.width = PHASE_SIZE[ph] + 'px';
+  node.style.height = Math.round(PHASE_SIZE[ph] * 0.66) + 'px';
+  node.innerHTML = `<div class="flip"><div class="wrap">${fishSVG(p.code, p.type, ph, m.Outfit, m.Color)}</div></div><span class="tag">${escapeHtml(p.code)} ${escapeHtml(p.name)}</span>`;
+  node.dataset.code = p.code;
+  node.dataset.x = 20 + Math.random()*60;
+  node.style.left = node.dataset.x + '%';
+  node.style.top = (22 + Math.random()*50) + '%';
+  attachTap(node, p.code);
+  wander(node);
+  return node;
 }
 
-function place(node, zone) {
-  const sizes = [40, 48, 56, 64, 74];
-  const ph = Number(node.dataset.phase || 1);
-  node.style.width = node.style.height = sizes[ph] + 'px';
-  const set = () => { node.style.left = (8 + Math.random()*78) + '%'; node.style.top = (22 + Math.random()*52) + '%'; };
-  set();
-  timers.push(setInterval(set, 2600 + Math.random()*2000));
+// ว่ายช้าๆ เลือกจุดใหม่เป็นระยะ และหันหัวตามทิศทาง
+function wander(node) {
+  const pick = () => {
+    const nx = 4 + Math.random()*80, ny = 20 + Math.random()*56;
+    const flip = node.querySelector('.flip');
+    const oldX = parseFloat(node.dataset.x);
+    if (nx < oldX - 2) flip.classList.add('left');
+    else if (nx > oldX + 2) flip.classList.remove('left');
+    node.dataset.x = nx;
+    node.style.left = nx + '%';
+    node.style.top = ny + '%';
+  };
+  pick();
+  timers.push(setInterval(pick, WANDER_MS + Math.random()*3000));
 }
 
+// แตะหนึ่งครั้ง = กระโดด, แตะสองครั้ง = รายละเอียด
+let lastTap = { code:null, t:0 }, tapTimer = null;
+function attachTap(node, code) {
+  node.addEventListener('click', e => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (lastTap.code === code && now - lastTap.t < 380) {
+      clearTimeout(tapTimer); lastTap = { code:null, t:0 };
+      openDetail(code);
+      return;
+    }
+    lastTap = { code, t:now };
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => jump(node), 260);
+  });
+}
+
+function jump(node) {
+  const wrap = node.querySelector('.wrap');
+  wrap.classList.remove('jump');
+  void wrap.offsetWidth;
+  wrap.classList.add('jump');
+  splash(node);
+  setTimeout(() => wrap.classList.remove('jump'), 950);
+}
+
+function splash(node) {
+  const pond = node.parentElement;
+  const rect = node.getBoundingClientRect();
+  const pr = pond.getBoundingClientRect();
+  const left = rect.left - pr.left + rect.width/2, top = rect.top - pr.top + rect.height/3;
+  for (let i=0;i<7;i++) {
+    const d = document.createElement('div');
+    d.className = 'drop';
+    const ang = (Math.PI*2*i)/7;
+    d.style.left = left + 'px'; d.style.top = top + 'px';
+    d.style.setProperty('--dx', (Math.cos(ang)*34) + 'px');
+    d.style.setProperty('--dy', (Math.sin(ang)*34 - 12) + 'px');
+    pond.appendChild(d);
+    setTimeout(() => d.remove(), 800);
+  }
+}
+
+// ---------- ทะเบียน ----------
 function renderDex() {
   const el = document.getElementById('tab-dex');
   el.innerHTML = '';
@@ -247,14 +314,12 @@ function renderDex() {
     card.className = 'card';
     const pic = m.IconFileId
       ? `<img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(m.IconFileId)}&sz=w200" alt="">`
-      : `<canvas width="16" height="16"></canvas>`;
+      : fishSVG(p.code, p.type, ph, m.Outfit, m.Color);
     card.innerHTML = `<div class="pic">${pic}</div>
-      <div class="body"><b>${p.code} · ${escapeHtml(p.name)}</b>
+      <div class="body"><b>${escapeHtml(p.code)} · ${escapeHtml(p.name)}</b>
       <span class="pill">${PHASE_TH[ph]}</span><span class="pill gray">${escapeHtml(p.type||'')}</span>
-      <small>${escapeHtml(p.desc||'')}</small>
-      ${m.Url ? `<small><a href="${escapeHtml(m.Url)}" target="_blank" rel="noopener" style="color:#ffd54a">เปิดแอป</a></small>` : ''}</div>`;
-    if (!m.IconFileId) drawSprite(card.querySelector('canvas'), p.code, ph, m.Outfit, m.Color);
-    card.onclick = () => openEditor(p.code);
+      <small>${escapeHtml(p.desc||'')}</small></div>`;
+    card.onclick = () => openDetail(p.code);
     el.appendChild(card);
   });
 }
@@ -271,12 +336,11 @@ function renderEgg() {
   S.ideas.filter(i => (i.Status||'egg') === 'egg').forEach(i => {
     const d = document.createElement('div');
     d.className = 'card';
-    d.innerHTML = `<div class="pic"><canvas width="16" height="16"></canvas></div>
+    d.innerHTML = `<div class="pic">${eggSVG(String(i.ID), i.Type || 'Others')}</div>
       <div class="body"><b>${escapeHtml(i.Name)}</b>
       <span class="pill">ไข่</span><span class="pill gray">${escapeHtml(i.Type||'')}</span>
       <small>${escapeHtml(i.Note||'')}</small>
       <div style="margin-top:6px"><button class="act" data-hatch="${escapeHtml(i.ID)}" type="button">🐣 ฟักไข่</button></div></div>`;
-    drawSprite(d.querySelector('canvas'), String(i.ID), 0);
     el.appendChild(d);
   });
   el.querySelector('#addIdea').onclick = async () => {
@@ -291,27 +355,60 @@ function renderEgg() {
   });
 }
 
+// ---------- รายละเอียด ----------
+function openDetail(code) {
+  const p = S.projects.find(x => x.code === code) || { code, name:'', type:'', desc:'' };
+  const m = monsterOf(code) || {};
+  const ph = phaseOf(code);
+  const zone = zoneOf(p.type);
+  const pic = m.IconFileId
+    ? `<img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(m.IconFileId)}&sz=w400" alt="" style="height:150px">`
+    : fishSVG(code, p.type, ph, m.Outfit, m.Color);
+  document.getElementById('detailBody').innerHTML = `
+    <div class="big" style="--pond:${zone.pond}">${pic}</div>
+    <h3>${escapeHtml(code)} · ${escapeHtml(p.name)}</h3>
+    <span class="pill">${PHASE_TH[ph]}</span><span class="pill gray">${escapeHtml(p.type||'')}</span>
+    <label>รายละเอียด</label>
+    <div>${escapeHtml(p.desc || '—')}</div>
+    <label>วันเกิด</label>
+    <div>${escapeHtml(p.birthday || '—')}</div>
+    <label>ลิงก์แอป</label>
+    <div>${m.Url ? `<a href="${escapeHtml(m.Url)}" target="_blank" rel="noopener" style="color:#7a4a00">${escapeHtml(m.Url)}</a>` : '—'}</div>
+    <label>โน้ต</label>
+    <div>${escapeHtml(m.Note || '—')}</div>
+    <div class="row">
+      <button class="act" style="background:#e7dac2;color:#3b3229" id="dClose" type="button">ปิด</button>
+      <button class="act" id="dEdit" type="button">แก้ไขสถานะ</button>
+    </div>`;
+  document.getElementById('detail').classList.add('show');
+  document.getElementById('dClose').onclick = () => document.getElementById('detail').classList.remove('show');
+  document.getElementById('dEdit').onclick = () => {
+    document.getElementById('detail').classList.remove('show');
+    openEditor(code);
+  };
+}
+
 // ---------- แก้สถานะ ----------
 function openEditor(code) {
   const p = S.projects.find(x => x.code === code) || { code, name:'', type:'', desc:'' };
   const m = monsterOf(code) || {};
   const ph = phaseOf(code);
   document.getElementById('editorBody').innerHTML = `
-    <h3>${code} · ${escapeHtml(p.name)}</h3>
+    <h3>${escapeHtml(code)} · ${escapeHtml(p.name)}</h3>
     <label>เฟส</label>
-    <select id="ePhase">${PHASES.map((n,i)=>`<option value="${i}" ${i===ph?'selected':''}>${i} · ${n} — ${PHASE_TH[i]}</option>`).join('')}</select>
-    <label>ชุด / เสื้อ (outfit: none หรือ hat)</label>
+    <select id="ePhase">${PHASE_TH.map((n,i)=>`<option value="${i}" ${i===ph?'selected':''}>${i} · ${n}</option>`).join('')}</select>
+    <label>ชุด (none หรือ hat)</label>
     <select id="eOutfit"><option value="none" ${m.Outfit==='none'?'selected':''}>ไม่มี</option><option value="hat" ${m.Outfit==='hat'?'selected':''}>หมวก</option></select>
-    <label>สีเสื้อ / สีหลัก</label>
-    <input id="eColor" type="color" value="${m.Color || '#f2c94c'}">
-    <label>รหัสไฟล์ไอคอนใน Drive (IconFileId)</label>
+    <label>สีชุด / สีหลัก</label>
+    <input id="eColor" type="color" value="${m.Color || '#e0463c'}">
+    <label>IconFileId ของไอคอนใน Drive</label>
     <input id="eIcon" value="${escapeHtml(m.IconFileId || '')}">
     <label>ลิงก์แอป (Url)</label>
     <input id="eUrl" value="${escapeHtml(m.Url || '')}">
     <label>โน้ต / ประวัติ</label>
     <textarea id="eNote" rows="3">${escapeHtml(m.Note || '')}</textarea>
     <div class="row">
-      <button class="act ghost" id="eCancel" type="button">ปิด</button>
+      <button class="act" style="background:#e7dac2;color:#3b3229" id="eCancel" type="button">ปิด</button>
       <button class="act" id="eSave" type="button">บันทึก</button>
     </div>`;
   document.getElementById('editor').classList.add('show');
@@ -326,17 +423,12 @@ function openEditor(code) {
   };
 }
 
-// ---------- จัดการสถานะการโหลด/บันทึก ----------
+// ---------- บันทึกและโหลดซ้ำ ----------
 async function run(fn) {
   try {
     const r = await fn();
-    if (r && API_URL) {
-      S = { projects: S.projects, monsters: r.monsters, ideas: r.ideas, history: r.history };
-      if (r.code) { await load(); alert('ฟักแล้ว รหัสใหม่ ' + r.code); return; }
-      await load();
-      return;
-    }
-    render();
+    if (r && r.code) { await load(); alert('ฟักแล้ว รหัสใหม่ ' + r.code); return; }
+    if (API_URL) await load(); else render();
   } catch (e) { alert('ผิดพลาด: ' + e.message); }
 }
 
@@ -348,6 +440,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   ['farm','dex','egg'].forEach(t => document.getElementById('tab-'+t).hidden = (t !== b.dataset.tab));
 });
 document.getElementById('reload').onclick = load;
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }));
 load();
 </script>
 </body>
