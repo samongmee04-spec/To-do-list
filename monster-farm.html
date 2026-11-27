@@ -146,35 +146,52 @@ function drawSprite(canvas, code, phase, outfit, color) {
   const r = rng(hash(code));
   const hue = Math.floor(r()*360);
   const body = `hsl(${hue} 70% 62%)`, dark = `hsl(${hue} 55% 30%)`;
-  if (phase === 0) { // ไข่
-    ctx.fillStyle = '#f4ecd8'; ctx.strokeStyle = dark;
-    for (let y=3;y<14;y++) for (let x=3;x<13;x++) {
-      const dx=(x-7.5)/5, dy=(y-8.5)/6.2;
+  if (phase === 0) { // ไข่ มีลายจุด
+    ctx.fillStyle = '#f4ecd8';
+    for (let y=2;y<14;y++) for (let x=3;x<13;x++) {
+      const dx=(x-7.5)/5, dy=(y-8)/6;
       if (dx*dx+dy*dy<1) ctx.fillRect(x,y,1,1);
     }
     ctx.fillStyle = `hsl(${hue} 60% 60%)`;
     [[5,6],[9,9],[6,11],[10,5]].forEach(([x,y]) => ctx.fillRect(x,y,2,1));
     return;
   }
+  // ขนาดลำตัวเพิ่มตามเฟส: Baby เล็ก -> Super ใหญ่สุด
+  const rad = [0, 3.2, 4.0, 4.6, 5.0][phase];
+  const top = [0, 7, 6, 5, 4][phase];
+  const bottom = [0, 13, 13, 13, 13][phase];
   const grid = [];
   for (let y=0;y<N;y++) grid.push(new Array(N).fill(0));
-  for (let y=4;y<14;y++) for (let x=2;x<=7;x++) {
-    const dx=(x-7.5)/5.5, dy=(y-9)/5.2;
-    if (dx*dx+dy*dy < 1 + (r()-0.5)*0.25) { grid[y][x]=1; grid[y][N-1-x]=1; }
+  const cy = (top+bottom)/2, ry = (bottom-top)/2 + 0.5;
+  for (let y=top;y<=bottom;y++) for (let x=0;x<N;x++) {
+    const dx=(x-7.5)/rad, dy=(y-cy)/ry;
+    if (dx*dx+dy*dy < 1 + (r()-0.5)*0.15 && x<=7) { grid[y][x]=1; grid[y][N-1-x]=1; }
   }
-  // ขาเล็ก
-  grid[14][5]=grid[14][6]=grid[14][9]=grid[14][10]=1;
+  // ขาตั้งแต่ Child ขึ้นไป
+  if (phase >= 2) { grid[bottom+1][5]=grid[bottom+1][6]=grid[bottom+1][9]=grid[bottom+1][10]=1; }
+  // หูหรือเขา (Child ขึ้นไป)
+  if (phase >= 2) { grid[top-1][3]=grid[top-1][12]=1; grid[top-2][3]=grid[top-2][12]=1; }
+  // ปีกแบบเล็กตอน Adult
+  if (phase >= 3) { for (let y=cy-1;y<=cy+1;y++) { grid[y|0][0]=1; grid[y|0][N-1]=1; } }
   ctx.fillStyle = body;
   for (let y=0;y<N;y++) for (let x=0;x<N;x++) if (grid[y][x]) ctx.fillRect(x,y,1,1);
   // เสื้อผ้า (แถบล่างลำตัว)
   ctx.fillStyle = color || '#f2c94c';
-  for (let y=11;y<13;y++) for (let x=3;x<13;x++) if (grid[y][x]) ctx.fillRect(x,y,1,1);
-  if (outfit === 'hat') { ctx.fillStyle = color || '#e0463c'; for (let x=4;x<12;x++) ctx.fillRect(x,2,1,1); ctx.fillRect(5,1,6,1); }
-  // ตา
+  for (let y=bottom-1;y<=bottom;y++) for (let x=3;x<13;x++) if (grid[y] && grid[y][x]) ctx.fillRect(x,y,1,1);
+  if (outfit === 'hat') { ctx.fillStyle = color || '#e0463c'; for (let x=4;x<12;x++) ctx.fillRect(x,top-2,1,1); ctx.fillRect(5,top-3,6,1); }
+  // ตา (ใหญ่ขึ้นตามเฟส)
+  const eyeY = Math.round(cy) - 1;
   ctx.fillStyle = '#1b1a20';
-  ctx.fillRect(5,7,2,2); ctx.fillRect(9,7,2,2);
-  ctx.fillStyle = '#fff'; ctx.fillRect(5,7,1,1); ctx.fillRect(9,7,1,1);
-  if (phase >= 3) { ctx.fillStyle = dark; ctx.fillRect(6,10,4,1); }
+  ctx.fillRect(5,eyeY,2,2); ctx.fillRect(9,eyeY,2,2);
+  ctx.fillStyle = '#fff'; ctx.fillRect(5,eyeY,1,1); ctx.fillRect(9,eyeY,1,1);
+  if (phase >= 3) { ctx.fillStyle = dark; ctx.fillRect(6,eyeY+3,4,1); }
+  // มงกุฎ Super
+  if (phase === 4) {
+    ctx.fillStyle = '#ffd54a';
+    [4,6,8,10].forEach((x,i)=> ctx.fillRect(x, 1 + (i%2), 1, 2));
+    ctx.fillRect(4,3,7,1);
+    ctx.fillStyle = '#fff6c2'; ctx.fillRect(0,0,1,1); ctx.fillRect(15,2,1,1);
+  }
 }
 
 // ---------- วาดหน้าต่างๆ ----------
@@ -195,7 +212,7 @@ function renderFarm() {
     list.forEach(p => {
       const ph = phaseOf(p.code);
       const m = document.createElement('div');
-      m.className = 'mon' + (ph === 4 ? ' super' : '');
+      m.className = 'mon' + (ph === 4 ? ' super' : ''); m.dataset.phase = ph;
       m.innerHTML = `<canvas></canvas><span class="tag">${p.code} ${p.name}</span>`;
       drawMonster(m.querySelector('canvas'), p, ph);
       place(m, zone);
@@ -212,6 +229,9 @@ function drawMonster(canvas, p, ph) {
 }
 
 function place(node, zone) {
+  const sizes = [40, 48, 56, 64, 74];
+  const ph = Number(node.dataset.phase || 1);
+  node.style.width = node.style.height = sizes[ph] + 'px';
   const set = () => { node.style.left = (8 + Math.random()*78) + '%'; node.style.top = (22 + Math.random()*52) + '%'; };
   set();
   timers.push(setInterval(set, 2600 + Math.random()*2000));
