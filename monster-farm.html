@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2b2a33">
+<title>ฟาร์มมอนสเตอร์ · โปรเจกต์ของฉัน</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; background:#2b2a33; color:#f1ede6; font-family:'Nunito','Anuphan',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
+header { display:flex; align-items:center; gap:10px; padding:12px 14px; position:sticky; top:0; z-index:5; background:#2b2a33; border-bottom:2px solid #3f3d4a; }
+header h1 { font-size:16px; margin:0; letter-spacing:.5px; flex:1; }
+header a.back { color:#f1ede6; text-decoration:none; font-weight:800; background:#3f3d4a; padding:6px 10px; border-radius:10px; }
+nav { display:flex; gap:6px; padding:8px 14px; }
+nav button { flex:1; padding:8px 0; border:0; border-radius:10px; background:#3f3d4a; color:#cfc9bf; font-weight:800; cursor:pointer; }
+nav button.on { background:#f2c94c; color:#2b2a33; }
+main { padding:8px 12px 40px; }
+.banner { background:#5a3d1f; color:#ffd98a; font-size:12px; padding:8px 10px; border-radius:10px; margin-bottom:10px; display:none; }
+.banner.show { display:block; }
+
+/* ฟาร์ม */
+.zone { position:relative; height:200px; margin-bottom:14px; border-radius:16px; overflow:hidden;
+  background:repeating-linear-gradient(0deg,#3a4a36 0 14px,#41533d 14px 28px); border:3px solid #55654d; }
+.zone h2 { position:absolute; top:6px; left:10px; margin:0; font-size:12px; letter-spacing:1px; background:rgba(0,0,0,.45); padding:3px 8px; border-radius:8px; z-index:2; }
+.mon { position:absolute; width:64px; height:64px; cursor:pointer; transition:left 2.4s linear, top 2.4s linear; image-rendering:pixelated; }
+.mon canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
+.mon.super { filter:drop-shadow(0 0 6px #ffd54a) drop-shadow(0 0 2px #fff); }
+.mon .tag { position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); font-size:10px; white-space:nowrap; background:rgba(0,0,0,.6); padding:1px 5px; border-radius:6px; }
+
+/* Dex และไข่ */
+.card { display:flex; gap:10px; background:#37353f; border-radius:14px; padding:10px; margin-bottom:10px; cursor:pointer; }
+.card .pic { width:64px; height:64px; flex:none; background:#25242b; border-radius:10px; display:grid; place-items:center; overflow:hidden; }
+.card .pic img { width:100%; height:100%; object-fit:contain; }
+.card .pic canvas { width:56px; height:56px; image-rendering:pixelated; }
+.card .body { min-width:0; flex:1; }
+.card b { display:block; font-size:14px; }
+.card small { color:#bdb6aa; font-size:11.5px; display:block; line-height:1.4; }
+.pill { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:8px; background:#f2c94c; color:#2b2a33; margin-right:4px; }
+.pill.gray { background:#6b6878; color:#fff; }
+.egg-form { background:#37353f; border-radius:14px; padding:10px; margin-bottom:12px; display:grid; gap:6px; }
+input, select, textarea { width:100%; padding:8px 10px; border-radius:10px; border:1px solid #55536a; background:#25242b; color:#f1ede6; font:inherit; }
+button.act { padding:9px 12px; border:0; border-radius:10px; background:#f2c94c; color:#2b2a33; font-weight:800; cursor:pointer; }
+button.ghost { background:#55536a; color:#f1ede6; }
+
+/* ป๊อปอัป */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; justify-content:center; z-index:10; }
+.modal.show { display:flex; }
+.sheet { width:100%; max-width:520px; background:#2b2a33; border-radius:18px 18px 0 0; padding:16px; max-height:88vh; overflow:auto; }
+.sheet h3 { margin:0 0 10px; font-size:15px; }
+.sheet label { font-size:11.5px; color:#bdb6aa; display:block; margin:8px 0 3px; }
+.row { display:flex; gap:8px; margin-top:12px; }
+.row button { flex:1; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="index.html#self">←</a>
+  <h1>ฟาร์มมอนสเตอร์</h1>
+  <button class="act ghost" id="reload" type="button">↻</button>
+</header>
+<nav>
+  <button class="on" data-tab="farm">ฟาร์ม</button>
+  <button data-tab="dex">ทะเบียน</button>
+  <button data-tab="egg">ไข่ไอเดีย</button>
+</nav>
+<main>
+  <div class="banner" id="banner">ยังไม่ได้ตั้งค่า API_URL จึงแสดงข้อมูลตัวอย่าง และการแก้ไขจะยังไม่บันทึกลงชีท</div>
+  <section id="tab-farm"></section>
+  <section id="tab-dex" hidden></section>
+  <section id="tab-egg" hidden></section>
+</main>
+
+<div class="modal" id="editor"><div class="sheet" id="editorBody"></div></div>
+
+<script>
+// ===== ตั้งค่า: วาง Web app URL จาก Apps Script และรหัสลับ (ต้องตรงกับ SECRET ใน Code.gs) =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbxTn09gumpZgoegsQd1b7zieiIBCIiR1SdiKnbilZ-aPpNVW448qfeCsjAWG_nMr7MT/exec';
+const TOKEN   = 'monster0244@';
+
+// ---------- ข้อมูลและการเชื่อมต่อ ----------
+const ZONES = [
+  { type:'App',        label:'APP',        species:'slime' },
+  { type:'Micro site', label:'MICRO SITE', species:'bird'  },
+  { type:'System',     label:'SYSTEM',     species:'golem' },
+  { type:'Others',     label:'OTHERS',     species:'fox'   },
+];
+const PHASES = ['Egg','Baby','Child','Adult','Super'];
+const PHASE_TH = ['ไข่','Baby (Prototype)','Child (Develop)','Adult (Decorate/Function)','Super (Publish)'];
+
+let S = { projects:[], monsters:[], ideas:[], history:[] };
+
+const DEMO = {
+  projects:[
+    {code:'P1',name:'Branch Booth Info',type:'Micro site',desc:'All information of Branch booth'},
+    {code:'P2',name:'Calorie tracker',type:'App',desc:'Calory eat and exercise count'},
+    {code:'P6',name:'To Do List',type:'App',desc:'Working, personal list'},
+    {code:'P13',name:'P mass',type:'Others',desc:'Automatic post on Youtube'},
+    {code:'P14',name:'PhaTaem',type:'System',desc:'Automatic post on Youtube'},
+  ],
+  monsters:[{Code:'P2',Phase:4},{Code:'P6',Phase:3},{Code:'P1',Phase:2}],
+  ideas:[{ID:'demo1',Name:'AI Team Chat',Type:'App',Note:'ห้องแชททีม AI',Status:'egg'}],
+  history:[]
+};
+
+async function api(action, data={}) {
+  if (!API_URL) return null;
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ token:TOKEN, action, ...data }) });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'เกิดข้อผิดพลาด');
+  return j;
+}
+
+async function load() {
+  if (!API_URL) {
+    document.getElementById('banner').classList.add('show');
+    S = JSON.parse(JSON.stringify(DEMO));
+  } else {
+    const res = await fetch(API_URL);
+    S = await res.json();
+  }
+  render();
+}
+
+function monsterOf(code) {
+  return S.monsters.find(m => String(m.Code) === code) || null;
+}
+function phaseOf(code) {
+  const m = monsterOf(code);
+  const p = m ? Number(m.Phase) : 1;
+  return isNaN(p) ? 1 : p;
+}
+function zoneOf(type) {
+  return ZONES.find(z => z.type === type) || ZONES[3];
+}
+
+// ---------- สร้างรูปพิกเซลจากรหัส ----------
+function hash(str) { let h=2166136261; for (const c of str) { h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function drawSprite(canvas, code, phase, outfit, color) {
+  const ctx = canvas.getContext('2d');
+  const N = 16;
+  canvas.width = N; canvas.height = N;
+  ctx.clearRect(0,0,N,N);
+  const r = rng(hash(code));
+  const hue = Math.floor(r()*360);
+  const body = `hsl(${hue} 70% 62%)`, dark = `hsl(${hue} 55% 30%)`;
+  if (phase === 0) { // ไข่
+    ctx.fillStyle = '#f4ecd8'; ctx.strokeStyle = dark;
+    for (let y=3;y<14;y++) for (let x=3;x<13;x++) {
+      const dx=(x-7.5)/5, dy=(y-8.5)/6.2;
+      if (dx*dx+dy*dy<1) ctx.fillRect(x,y,1,1);
+    }
+    ctx.fillStyle = `hsl(${hue} 60% 60%)`;
+    [[5,6],[9,9],[6,11],[10,5]].forEach(([x,y]) => ctx.fillRect(x,y,2,1));
+    return;
+  }
+  const grid = [];
+  for (let y=0;y<N;y++) grid.push(new Array(N).fill(0));
+  for (let y=4;y<14;y++) for (let x=2;x<=7;x++) {
+    const dx=(x-7.5)/5.5, dy=(y-9)/5.2;
+    if (dx*dx+dy*dy < 1 + (r()-0.5)*0.25) { grid[y][x]=1; grid[y][N-1-x]=1; }
+  }
+  // ขาเล็ก
+  grid[14][5]=grid[14][6]=grid[14][9]=grid[14][10]=1;
+  ctx.fillStyle = body;
+  for (let y=0;y<N;y++) for (let x=0;x<N;x++) if (grid[y][x]) ctx.fillRect(x,y,1,1);
+  // เสื้อผ้า (แถบล่างลำตัว)
+  ctx.fillStyle = color || '#f2c94c';
+  for (let y=11;y<13;y++) for (let x=3;x<13;x++) if (grid[y][x]) ctx.fillRect(x,y,1,1);
+  if (outfit === 'hat') { ctx.fillStyle = color || '#e0463c'; for (let x=4;x<12;x++) ctx.fillRect(x,2,1,1); ctx.fillRect(5,1,6,1); }
+  // ตา
+  ctx.fillStyle = '#1b1a20';
+  ctx.fillRect(5,7,2,2); ctx.fillRect(9,7,2,2);
+  ctx.fillStyle = '#fff'; ctx.fillRect(5,7,1,1); ctx.fillRect(9,7,1,1);
+  if (phase >= 3) { ctx.fillStyle = dark; ctx.fillRect(6,10,4,1); }
+}
+
+// ---------- วาดหน้าต่างๆ ----------
+function render() {
+  renderFarm(); renderDex(); renderEgg();
+}
+
+let timers = [];
+function renderFarm() {
+  const el = document.getElementById('tab-farm');
+  el.innerHTML = '';
+  timers.forEach(clearInterval); timers = [];
+  ZONES.forEach(z => {
+    const zone = document.createElement('div');
+    zone.className = 'zone'; zone.dataset.type = z.type;
+    zone.innerHTML = `<h2>${z.label}</h2>`;
+    const list = S.projects.filter(p => (p.type || 'Others') === z.type);
+    list.forEach(p => {
+      const ph = phaseOf(p.code);
+      const m = document.createElement('div');
+      m.className = 'mon' + (ph === 4 ? ' super' : '');
+      m.innerHTML = `<canvas></canvas><span class="tag">${p.code} ${p.name}</span>`;
+      drawMonster(m.querySelector('canvas'), p, ph);
+      place(m, zone);
+      m.onclick = () => openEditor(p.code);
+      zone.appendChild(m);
+    });
+    el.appendChild(zone);
+  });
+}
+
+function drawMonster(canvas, p, ph) {
+  const m = monsterOf(p.code) || {};
+  drawSprite(canvas, p.code, ph, m.Outfit, m.Color);
+}
+
+function place(node, zone) {
+  const set = () => { node.style.left = (8 + Math.random()*78) + '%'; node.style.top = (22 + Math.random()*52) + '%'; };
+  set();
+  timers.push(setInterval(set, 2600 + Math.random()*2000));
+}
+
+function renderDex() {
+  const el = document.getElementById('tab-dex');
+  el.innerHTML = '';
+  S.projects.forEach(p => {
+    const m = monsterOf(p.code) || {};
+    const ph = phaseOf(p.code);
+    const card = document.createElement('div');
+    card.className = 'card';
+    const pic = m.IconFileId
+      ? `<img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(m.IconFileId)}&sz=w200" alt="">`
+      : `<canvas width="16" height="16"></canvas>`;
+    card.innerHTML = `<div class="pic">${pic}</div>
+      <div class="body"><b>${p.code} · ${escapeHtml(p.name)}</b>
+      <span class="pill">${PHASE_TH[ph]}</span><span class="pill gray">${escapeHtml(p.type||'')}</span>
+      <small>${escapeHtml(p.desc||'')}</small>
+      ${m.Url ? `<small><a href="${escapeHtml(m.Url)}" target="_blank" rel="noopener" style="color:#ffd54a">เปิดแอป</a></small>` : ''}</div>`;
+    if (!m.IconFileId) drawSprite(card.querySelector('canvas'), p.code, ph, m.Outfit, m.Color);
+    card.onclick = () => openEditor(p.code);
+    el.appendChild(card);
+  });
+}
+
+function renderEgg() {
+  const el = document.getElementById('tab-egg');
+  el.innerHTML = `
+    <div class="egg-form">
+      <input id="ideaName" placeholder="ชื่อไอเดีย">
+      <select id="ideaType">${ZONES.map(z=>`<option>${z.type}</option>`).join('')}</select>
+      <textarea id="ideaNote" rows="2" placeholder="หมายเหตุ"></textarea>
+      <button class="act" id="addIdea" type="button">🥚 ตุนไข่ใหม่</button>
+    </div>`;
+  S.ideas.filter(i => (i.Status||'egg') === 'egg').forEach(i => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = `<div class="pic"><canvas width="16" height="16"></canvas></div>
+      <div class="body"><b>${escapeHtml(i.Name)}</b>
+      <span class="pill">ไข่</span><span class="pill gray">${escapeHtml(i.Type||'')}</span>
+      <small>${escapeHtml(i.Note||'')}</small>
+      <div style="margin-top:6px"><button class="act" data-hatch="${escapeHtml(i.ID)}" type="button">🐣 ฟักไข่</button></div></div>`;
+    drawSprite(d.querySelector('canvas'), String(i.ID), 0);
+    el.appendChild(d);
+  });
+  el.querySelector('#addIdea').onclick = async () => {
+    const name = document.getElementById('ideaName').value.trim();
+    if (!name) return;
+    const data = { name, type: document.getElementById('ideaType').value, note: document.getElementById('ideaNote').value };
+    if (!API_URL) { S.ideas.push({ ID:'demo'+Date.now(), Name:data.name, Type:data.type, Note:data.note, Status:'egg' }); return render(); }
+    await run(() => api('addIdea', data));
+  };
+  el.querySelectorAll('[data-hatch]').forEach(b => b.onclick = async () => {
+    await run(() => api('hatchIdea', { id: b.dataset.hatch }));
+  });
+}
+
+// ---------- แก้สถานะ ----------
+function openEditor(code) {
+  const p = S.projects.find(x => x.code === code) || { code, name:'', type:'', desc:'' };
+  const m = monsterOf(code) || {};
+  const ph = phaseOf(code);
+  document.getElementById('editorBody').innerHTML = `
+    <h3>${code} · ${escapeHtml(p.name)}</h3>
+    <label>เฟส</label>
+    <select id="ePhase">${PHASES.map((n,i)=>`<option value="${i}" ${i===ph?'selected':''}>${i} · ${n} — ${PHASE_TH[i]}</option>`).join('')}</select>
+    <label>ชุด / เสื้อ (outfit: none หรือ hat)</label>
+    <select id="eOutfit"><option value="none" ${m.Outfit==='none'?'selected':''}>ไม่มี</option><option value="hat" ${m.Outfit==='hat'?'selected':''}>หมวก</option></select>
+    <label>สีเสื้อ / สีหลัก</label>
+    <input id="eColor" type="color" value="${m.Color || '#f2c94c'}">
+    <label>รหัสไฟล์ไอคอนใน Drive (IconFileId)</label>
+    <input id="eIcon" value="${escapeHtml(m.IconFileId || '')}">
+    <label>ลิงก์แอป (Url)</label>
+    <input id="eUrl" value="${escapeHtml(m.Url || '')}">
+    <label>โน้ต / ประวัติ</label>
+    <textarea id="eNote" rows="3">${escapeHtml(m.Note || '')}</textarea>
+    <div class="row">
+      <button class="act ghost" id="eCancel" type="button">ปิด</button>
+      <button class="act" id="eSave" type="button">บันทึก</button>
+    </div>`;
+  document.getElementById('editor').classList.add('show');
+  document.getElementById('eCancel').onclick = () => document.getElementById('editor').classList.remove('show');
+  document.getElementById('eSave').onclick = async () => {
+    await run(async () => {
+      await api('setPhase', { code, phase: Number(document.getElementById('ePhase').value), note: document.getElementById('eNote').value });
+      return api('setStyle', { code, outfit: document.getElementById('eOutfit').value, color: document.getElementById('eColor').value,
+        iconFileId: document.getElementById('eIcon').value.trim(), url: document.getElementById('eUrl').value.trim() });
+    });
+    document.getElementById('editor').classList.remove('show');
+  };
+}
+
+// ---------- จัดการสถานะการโหลด/บันทึก ----------
+async function run(fn) {
+  try {
+    const r = await fn();
+    if (r && API_URL) {
+      S = { projects: S.projects, monsters: r.monsters, ideas: r.ideas, history: r.history };
+      if (r.code) { await load(); alert('ฟักแล้ว รหัสใหม่ ' + r.code); return; }
+      await load();
+      return;
+    }
+    render();
+  } catch (e) { alert('ผิดพลาด: ' + e.message); }
+}
+
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- แท็บ ----------
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['farm','dex','egg'].forEach(t => document.getElementById('tab-'+t).hidden = (t !== b.dataset.tab));
+});
+document.getElementById('reload').onclick = load;
+load();
+</script>
+</body>
+</html>
