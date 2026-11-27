@@ -20,6 +20,12 @@ main { padding:8px 12px 40px; }
 .hint { font-size:12px; color:#7a6a55; margin:0 2px 10px; }
 
 /* บ่อปลาแต่ละโซน */
+/* ฉากหลังเป็นแผนที่เกาะ 4 ส่วน ทุกโปรเจกต์อยู่บนแผนที่เดียวกัน */
+.board { position:relative; width:100%; aspect-ratio:1200/900; border-radius:18px; overflow:hidden;
+  background:#cfe6ef url(assets/farm/map.webp) center/100% 100% no-repeat;
+  border:2px solid rgba(60,40,20,.18); }
+.zone-tag { position:absolute; margin:4px; font-size:10px; letter-spacing:1px; color:#3b3229; background:rgba(255,255,255,.8);
+  padding:2px 8px; border-radius:10px; z-index:2; pointer-events:none; }
 .pond { position:relative; height:210px; margin-bottom:14px; border-radius:22px; overflow:hidden;
   background:radial-gradient(circle at 25% 20%, rgba(255,255,255,.7), transparent 55%),
              radial-gradient(circle at 80% 90%, rgba(60,40,20,.08), transparent 50%), var(--pond);
@@ -201,23 +207,36 @@ function eggSVG(code, type) {
 // ---------- วาดหน้าต่างๆ ----------
 function render() { renderFarm(); renderDex(); renderEgg(); }
 
+// ตำแหน่งของแต่ละโซนบนแผนที่ (หน่วยเป็น %) อ้างอิงจากรูปแผนที่ 4 ส่วน
+const BOUNDS = {
+  'App':        { x0:0,  x1:50,  y0:0,  y1:50  },  // บนซ้าย (ส้ม)
+  'Micro site': { x0:50, x1:100, y0:0,  y1:50  },  // บนขวา (ฟ้า)
+  'System':     { x0:0,  x1:50,  y0:50, y1:100 },  // ล่างซ้าย (เขียว)
+  'Others':     { x0:50, x1:100, y0:50, y1:100 },  // ล่างขวา (ม่วง)
+};
+
 function renderFarm() {
   const el = document.getElementById('tab-farm');
   el.innerHTML = '';
   timers.forEach(clearInterval); timers = [];
+  const board = document.createElement('div');
+  board.className = 'board';
   ZONES.forEach(z => {
-    const pond = document.createElement('div');
-    pond.className = 'pond';
-    pond.style.setProperty('--pond', z.pond);
-    pond.innerHTML = `<h2>${z.label}</h2>`;
+    const b = BOUNDS[z.type];
+    const tag = document.createElement('div');
+    tag.className = 'zone-tag';
+    tag.style.left = b.x0 + '%';
+    tag.style.top = b.y0 + '%';
+    tag.textContent = z.label;
+    board.appendChild(tag);
     S.projects.filter(p => (p.type || 'Others') === z.type).forEach(p => {
-      pond.appendChild(makeFish(p));
+      board.appendChild(makeFish(p, b));
     });
-    el.appendChild(pond);
   });
+  el.appendChild(board);
 }
 
-function makeFish(p) {
+function makeFish(p, b) {
   const ph = phaseOf(p.code);
   const m = monsterOf(p.code) || {};
   const node = document.createElement('div');
@@ -225,18 +244,20 @@ function makeFish(p) {
   node.style.width = Math.round(PHASE_SIZE[ph] * 1.2) + 'px';
   node.innerHTML = `<div class="flip"><div class="wrap">${spriteHTML(p.code, p.type, ph, m)}</div></div><span class="tag">${escapeHtml(p.code)} ${escapeHtml(p.name)}</span>`;
   node.dataset.code = p.code;
-  node.dataset.x = 20 + Math.random()*60;
-  node.style.left = node.dataset.x + '%';
-  node.style.top = (22 + Math.random()*50) + '%';
+  const x = b.x0 + 3 + Math.random() * (b.x1 - b.x0 - 14);
+  node.dataset.x = x;
+  node.style.left = x + '%';
+  node.style.top = (b.y0 + 12 + Math.random() * (b.y1 - b.y0 - 24)) + '%';
   attachTap(node, p.code);
-  wander(node);
+  wander(node, b);
   return node;
 }
 
 // ว่ายช้าๆ เลือกจุดใหม่เป็นระยะ และหันหัวตามทิศทาง
-function wander(node) {
+function wander(node, b) {
   const pick = () => {
-    const nx = 4 + Math.random()*80, ny = 20 + Math.random()*56;
+    const nx = b.x0 + 3 + Math.random() * (b.x1 - b.x0 - 14);
+    const ny = b.y0 + 12 + Math.random() * (b.y1 - b.y0 - 24);
     const flip = node.querySelector('.flip');
     const oldX = parseFloat(node.dataset.x);
     if (nx < oldX - 2) flip.classList.add('left');
